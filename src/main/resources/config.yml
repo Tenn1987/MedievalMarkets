@@ -1,0 +1,19 @@
+# MedievalMarkets config (v0.0.x)
+
+# If MPCBridge is present+healthy, MM will hook it automatically.
+# If not, MM still enables in standalone mode.
+standalone:
+  enabled: true
+
+economy:
+  # Default currency used when MPCBridge is active
+  # Historically grounded: 1 SHEKEL ≈ iron weight unit
+  default-currency: "SHEKEL"
+
+  # Logical backing item for reference (used by MM pricing intuition)
+  backing-item: "IRON_NUGGET"
+
+market:
+  # Seed values used by the ledger to avoid insane price spikes at boot
+  seed-supply: 1000
+  seed-demand: 1000
