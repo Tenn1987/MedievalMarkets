@@ -1,18 +1,20 @@
 name: MedievalMarkets
 main: com.brandon.medievalmarkets.MedievalMarketsPlugin
-version: 0.0.4
+version: 0.0.5
 api-version: "1.21"
 
-softdepend: [BurgsAndBanners]
-            [MPCBridge]
-
+softdepend: [MPCBridge, BurgsAndBanners]
 
 commands:
+  markets:
+    description: Open markets UI / commands
+    usage: /markets
+    permission: medievalmarkets.use
   market:
-    description: Central marketplace actions
-    usage: /market
-    aliases: [mkt]
+    description: Market commands
+    usage: "/market <list|price|buy|sell>"
+    permission: medievalmarkets.use
 
 permissions:
-  medievalmarkets.admin:
-    default: op
+  medievalmarkets.use:
+    default: true
