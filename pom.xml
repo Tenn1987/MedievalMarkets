@@ -5,7 +5,7 @@
 
     <groupId>com.brandon</groupId>
     <artifactId>medievalmarkets</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
     <name>MedievalMarkets</name>
     <packaging>jar</packaging>
 
@@ -31,8 +31,8 @@
         </dependency>
         <dependency>
             <groupId>com.brandon</groupId>
-            <artifactId>mpcbridge</artifactId>
-            <version>0.0.1</version>
+            <artifactId>MPCBridge</artifactId>
+            <version>0.0.2</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -51,20 +51,7 @@
                 </configuration>
             </plugin>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals><goal>shade</goal></goals>
-                        <configuration>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+
         </plugins>
     </build>
 </project>

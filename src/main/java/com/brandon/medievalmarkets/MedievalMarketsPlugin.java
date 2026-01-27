@@ -1,5 +1,6 @@
 package com.brandon.medievalmarkets;
 
+import com.brandon.medievalmarkets.hooks.BabBurgHook;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -22,9 +23,19 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
     /** Market service instance (type unknown at compile time). */
     private Object market;
 
+    private BabBurgHook burgHook;
+
     @Override
     public void onEnable() {
         saveDefaultConfig(); // safe even in standalone mode
+
+        this.burgHook = new BabBurgHook(this);
+
+        if (burgHook.isAvailable()) {
+            getLogger().info("Hooked into MPCBridge economy.");
+        } else {
+            getLogger().warning("MPCBridge economy service not found; running in standalone mode.");
+        }
 
         // Try to hook bridge (optional)
         this.mpc = tryResolveMpcEconomy();
