@@ -2,6 +2,8 @@ package com.brandon.medievalmarkets.market;
 
 import com.brandon.medievalmarkets.hooks.BabBurgHook;
 import com.brandon.mpcbridge.api.MpcEconomy;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -32,9 +34,46 @@ public final class MarketService {
     }
 
     public void loadDefaults() {
-        // Keep your existing registrations (you can paste your full commodity list here).
-        // (I’m leaving this section untouched so you don’t lose your commodity work.)
+        // Load from config.yml (commodities section)
+        FileConfiguration cfg = plugin.getConfig();
+        ConfigurationSection sec = cfg.getConfigurationSection("commodities");
+        if (sec == null) {
+            plugin.getLogger().warning("[MedievalMarkets] No 'commodities:' section found in config.yml");
+            return;
+        }
+
+        int seedSupply = cfg.getInt("market.seed-supply", 1000);
+        int seedDemand = cfg.getInt("market.seed-demand", 1000);
+
+        for (String key : sec.getKeys(false)) {
+            ConfigurationSection csec = sec.getConfigurationSection(key);
+            if (csec == null) continue;
+
+            String matName = csec.getString("material", "");
+            Material mat;
+            try {
+                mat = Material.valueOf(matName.toUpperCase(Locale.ROOT));
+            } catch (Exception ex) {
+                plugin.getLogger().warning("[MedievalMarkets] Invalid material for commodity '" + key + "': " + matName);
+                continue;
+            }
+
+            double baseValue = csec.getDouble("base-value", 1.0);
+            double elasticity = csec.getDouble("elasticity", 0.4);
+
+            // Key is already lowercase from config, but enforce anyway:
+            String id = key.toLowerCase(Locale.ROOT);
+
+            register(new Commodity(id, mat, baseValue, elasticity));
+
+            // Seed the ledger so scarcityIndex isn't weird at boot
+            ledger.recordSupply(id, seedSupply);
+            ledger.recordDemand(id, seedDemand);
+        }
+
+        plugin.getLogger().info("[MedievalMarkets] Loaded " + commodities.size() + " commodities from config.");
     }
+
 
     /* =========================
        Queries / Accessors
@@ -159,6 +198,11 @@ public final class MarketService {
 
     public void register(Commodity c) {
         commodities.put(c.id(), c);
+    }
+
+    public void init() {
+        loadDefaults();
+        setPriceEngine(new PriceEngine(ledger, commodities));
     }
 
     public void setPriceEngine(PriceEngine engine) {

@@ -51,6 +51,12 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
                ========================= */
             this.marketService = new MarketService(this, economy);
 
+            saveDefaultConfig(); // ensures config exists on first run
+            reloadConfig();      // ensures latest values are loaded
+            marketService.setWildernessDefaultCurrency(getConfig().getString("economy.default-currency", "SHEKEL"));
+            marketService.init();
+
+
             // Register commands AFTER service exists
             if (getCommand("market") != null) {
                 getCommand("market").setExecutor(new MarketCommand(marketService));
