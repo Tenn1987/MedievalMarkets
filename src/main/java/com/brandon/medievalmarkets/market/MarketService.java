@@ -10,7 +10,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.Plugin;
 
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -66,8 +65,6 @@ public final class MarketService {
 
             register(new Commodity(id, mat, baseValue, elasticity));
 
-            ledger.recordSupply(id, seedSupply);
-            ledger.recordDemand(id, seedDemand);
         }
 
         plugin.getLogger().info("[MedievalMarkets] Loaded " + commodities.size() + " commodities from config.");
@@ -85,6 +82,12 @@ public final class MarketService {
     public boolean isInMarketZone(Player p) {
         return p != null && bab.isInBurg(p.getLocation());
     }
+
+    public UUID townId(Player p) {
+        if (p == null) return null;
+        return bab.treasuryIdAt(p.getLocation());
+    }
+
 
     /** Default currency = burg adopted currency; wilderness falls back to SHEKEL for display only. */
     public String defaultCurrency(Player p) {
@@ -106,11 +109,12 @@ public final class MarketService {
                 : code.toUpperCase(Locale.ROOT);
     }
 
-    public double priceEach(String commodityId, String currencyCode) {
-        double v = prices.commodityValue(commodityId);
+    public double priceEach(UUID townId, String commodityId, String currencyCode) {
+        double v = prices.commodityValue(townId, commodityId);
         double r = mpc.rate(currencyCode);
         return v * r;
     }
+
 
     /* =========================
        Trades
@@ -128,16 +132,20 @@ public final class MarketService {
 
         String cur = currencyCode.toUpperCase(Locale.ROOT);
 
-        double unit = priceEach(commodityId, cur);
+        double unitRaw = priceEach(treasuryId, commodityId, cur);
+
+        long unitCoins = unitPriceBuyCoins(unitRaw);
+        if (unitCoins <= 0) return false;
 
         long totalUnits;
         try {
-            totalUnits = wholeUnits(unit, qty);
-        } catch (IllegalArgumentException ex) {
-            buyer.sendMessage(org.bukkit.ChatColor.RED + "Trade would require fractional coins. Adjust qty/pricing.");
+            totalUnits = totalCoins(unitCoins, qty);
+        } catch (ArithmeticException ex) {
+            buyer.sendMessage(org.bukkit.ChatColor.RED + "Trade total overflow.");
             return false;
         }
 
+        double unit = (double) unitCoins;
         double total = (double) totalUnits;
 
         plugin.getLogger().info("[MM][BUY] burgTreasury=" + treasuryId
@@ -158,7 +166,14 @@ public final class MarketService {
             var leftovers = buyer.getInventory().addItem(stack);
             if (!leftovers.isEmpty()) {
                 int notGiven = leftovers.values().stream().mapToInt(ItemStack::getAmount).sum();
-                long refundUnits = wholeUnits(unit, notGiven);
+
+                long refundUnits;
+                try {
+                    refundUnits = totalCoins(unitCoins, notGiven);
+                } catch (ArithmeticException ex) {
+                    refundUnits = 0L;
+                }
+
                 if (refundUnits > 0) {
                     double refund = (double) refundUnits;
 
@@ -172,12 +187,11 @@ public final class MarketService {
                 }
             }
 
-            ledger.recordDemand(commodityId, qty);
+            ledger.recordDemand(treasuryId, commodityId, qty);
             mpc.recordPressure(cur, +0.001 * qty);
             return true;
 
         } catch (RuntimeException ex) {
-            // Covers IllegalArgumentException from MPCBridge for fractional coin amounts, etc.
             plugin.getLogger().warning("[MM][BUY] Exception: " + ex.getMessage());
             return false;
         }
@@ -199,18 +213,24 @@ public final class MarketService {
         int removed = removeMaterial(seller, c.material(), qty);
         if (removed <= 0) return false;
 
-        double unit = priceEach(commodityId, cur);
+        double unitRaw = priceEach(treasuryId, commodityId, cur);
 
-        long payoutUnits;
-        try {
-            payoutUnits = wholeUnits(unit, removed);
-        } catch (IllegalArgumentException ex) {
-            // Put items back; trade not allowed
+        long unitCoins = unitPriceSellCoins(unitRaw);
+        if (unitCoins <= 0) {
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
-            seller.sendMessage(org.bukkit.ChatColor.RED + "Trade would require fractional coins. Adjust qty/pricing.");
             return false;
         }
 
+        long payoutUnits;
+        try {
+            payoutUnits = totalCoins(unitCoins, removed);
+        } catch (ArithmeticException ex) {
+            seller.getInventory().addItem(new ItemStack(c.material(), removed));
+            seller.sendMessage(org.bukkit.ChatColor.RED + "Trade total overflow.");
+            return false;
+        }
+
+        double unit = (double) unitCoins;
         double payout = (double) payoutUnits;
 
         plugin.getLogger().info("[MM][SELL] commodity=" + commodityId
@@ -230,12 +250,12 @@ public final class MarketService {
             // Pay player
             mpc.deposit(seller.getUniqueId(), cur, payout);
 
-            ledger.recordSupply(commodityId, removed);
+            ledger.recordSupply(treasuryId, commodityId, removed);
             mpc.recordPressure(cur, -0.001 * removed);
             return true;
 
         } catch (RuntimeException ex) {
-            // If MPCBridge rejects, restore items
+            // If MPCBridge rejects for any reason, restore items
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
             plugin.getLogger().warning("[MM][SELL] Exception: " + ex.getMessage());
             return false;
@@ -260,19 +280,27 @@ public final class MarketService {
     }
 
     /**
-     * Compute total coin units as a WHOLE long.
-     * Rejects fractional totals and overflow.
+     * Market rule: prices are quoted in WHOLE coin units.
+     *
+     * To prevent exploits:
+     *  - BUY (player pays): round UP so the town never undercharges.
+     *  - SELL (town pays): round DOWN so the town never overpays.
+     *
+     * Totals use multiplyExact to prevent long overflow corruption.
      */
-    private static long wholeUnits(double unitPrice, int qty) {
-        if (qty <= 0) return 0L;
-        if (!Double.isFinite(unitPrice) || unitPrice <= 0) throw new IllegalArgumentException("bad unitPrice");
+    private static long unitPriceBuyCoins(double rawUnitPrice) {
+        if (!Double.isFinite(rawUnitPrice) || rawUnitPrice <= 0) return 0L;
+        return (long) Math.ceil(rawUnitPrice);
+    }
 
-        BigDecimal bd = BigDecimal.valueOf(unitPrice)
-                .multiply(BigDecimal.valueOf(qty))
-                .stripTrailingZeros();
+    private static long unitPriceSellCoins(double rawUnitPrice) {
+        if (!Double.isFinite(rawUnitPrice) || rawUnitPrice <= 0) return 0L;
+        return (long) Math.floor(rawUnitPrice);
+    }
 
-        if (bd.scale() > 0) throw new IllegalArgumentException("fractional coins");
-        return bd.longValueExact();
+    private static long totalCoins(long unitCoins, int qty) {
+        if (unitCoins <= 0 || qty <= 0) return 0L;
+        return Math.multiplyExact(unitCoins, (long) qty);
     }
 
     private int removeMaterial(Player p, Material mat, int amount) {

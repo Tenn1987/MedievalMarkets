@@ -1,6 +1,7 @@
 package com.brandon.medievalmarkets.market;
 
 import java.util.Map;
+import java.util.UUID;
 
 public final class PriceEngine {
 
@@ -12,11 +13,19 @@ public final class PriceEngine {
         this.commodities = commodities;
     }
 
-    public double commodityValue(String commodityId) {
+    public double commodityValue(UUID townId, String commodityId) {
         Commodity c = commodities.get(commodityId);
-        if (c == null) return 0.0;
+        if (c == null || townId == null) return 0.0;
 
-        double scarcity = ledger.scarcityIndex(commodityId);
-        return c.baseValue() * Math.pow(scarcity, c.elasticity());
+        double base = c.baseValue();
+        double elasticity = c.elasticity();
+
+        int supply = Math.max(1, ledger.supply(townId, commodityId));
+        int demand = Math.max(1, ledger.demand(townId, commodityId));
+
+        double ratio = (double) demand / (double) supply;
+
+        // base * (demand/supply)^elasticity
+        return base * Math.pow(ratio, elasticity);
     }
 }

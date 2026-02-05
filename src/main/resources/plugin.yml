@@ -1,6 +1,6 @@
 name: MedievalMarkets
 main: com.brandon.medievalmarkets.MedievalMarketsPlugin
-version: 0.0.7
+version: 0.1.0
 api-version: "1.21"
 
 softdepend: [MPCBridge, BurgsAndBanners]
