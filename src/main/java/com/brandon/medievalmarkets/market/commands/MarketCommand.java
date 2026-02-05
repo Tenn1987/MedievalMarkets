@@ -29,67 +29,134 @@ public final class MarketCommand implements CommandExecutor {
         }
 
         if (args.length == 0) {
-            return usage(p);
+            p.sendMessage(text("=== Medieval Markets ===", GOLD));
+            p.sendMessage(text("Commands:", GRAY));
+            p.sendMessage(text(" • /market list", YELLOW));
+            p.sendMessage(text(" • /market price <commodity> [currency]", YELLOW));
+            p.sendMessage(text(" • /market buy <commodity> <qty> [currency]", YELLOW));
+            p.sendMessage(text(" • /market sell <commodity> <qty> [currency]", YELLOW));
+            return true;
         }
 
         String sub = args[0].toLowerCase(Locale.ROOT);
 
         switch (sub) {
+            case "list" -> {
+                p.sendMessage(text("Commodities:", GOLD));
+                market.commodities().values().forEach(c -> {
+                    p.sendMessage(
+                            text("- ", GRAY)
+                                    .append(text(c.id(), WHITE))
+                                    .append(text(" (", DARK_GRAY))
+                                    .append(text(c.material().name(), GRAY))
+                                    .append(text(")", DARK_GRAY))
+                    );
+                });
+                return true;
+            }
 
             case "price" -> {
                 if (args.length < 2) return usage(p, "/market price <commodity> [currency]");
 
+                // Local market now requires a burg context
+                UUID townId = market.townId(p);
+                if (townId == null) {
+                    p.sendMessage(text("No wilderness markets.", RED));
+                    p.sendMessage(text("Stand inside a burg to view local pricing.", GRAY));
+                    return true;
+                }
+
                 String id = args[1].toLowerCase(Locale.ROOT);
+
                 String cur = (args.length >= 3)
                         ? args[2].toUpperCase(Locale.ROOT)
                         : market.defaultCurrency(p);
 
-                UUID townId = market.townId(p);
-                if (townId == null) {
+                double raw = market.priceEach(townId, id, cur);
+
+                long buyEach = (long) Math.ceil(raw);
+                long sellEach = (long) Math.floor(raw);
+
+                p.sendMessage(
+                        text(id, YELLOW)
+                                .append(text(" @ ", GRAY))
+                                .append(text("BUY ", GRAY))
+                                .append(text(buyEach, GREEN))
+                                .append(text(" / ", DARK_GRAY))
+                                .append(text("SELL ", GRAY))
+                                .append(text(sellEach, AQUA))
+                                .append(text(" ", GRAY))
+                                .append(text(cur, GOLD))
+                );
+
+                if (sellEach <= 0) {
+                    p.sendMessage(text("This item is currently worth < 1 coin here in " + cur + " (sell floors to 0).", RED));
+                    p.sendMessage(text("Try selling more at once, or use a stronger currency.", GRAY));
+                }
+
+                return true;
+            }
+
+            case "buy" -> {
+                if (args.length < 3) return usage(p, "/market buy <commodity> <qty> [currency]");
+
+                if (!market.isInMarketZone(p)) {
                     p.sendMessage(text("No wilderness markets.", RED));
                     p.sendMessage(text("Trade inside a burg, or trade directly with players (NPCs later).", GRAY));
                     return true;
                 }
 
-                double each = market.priceEach(townId, id, cur);
+                String id = args[1].toLowerCase(Locale.ROOT);
+                int qty = parseInt(args[2], 1);
+                String cur = (args.length >= 4) ? args[3].toUpperCase(Locale.ROOT) : market.defaultCurrency(p);
 
-                p.sendMessage(
-                        text(id, YELLOW)
-                                .append(text(" @ ", GRAY))
-                                .append(text(trimDouble(each), AQUA))
-                                .append(text(" ", GRAY))
-                                .append(text(cur, GOLD))
+                boolean ok = market.buy(p, id, qty, cur);
+
+                p.sendMessage(ok
+                        ? text("Bought.", GREEN)
+                        : text("Buy failed (funds? invalid commodity? inventory full?).", RED)
                 );
                 return true;
             }
 
-            // keep your existing sell/buy/list/etc cases here...
+            case "sell" -> {
+                if (args.length < 3) return usage(p, "/market sell <commodity> <qty> [currency]");
+
+                if (!market.isInMarketZone(p)) {
+                    p.sendMessage(text("No wilderness markets.", RED));
+                    p.sendMessage(text("Trade inside a burg, or trade directly with players (NPCs later).", GRAY));
+                    return true;
+                }
+
+                String id = args[1].toLowerCase(Locale.ROOT);
+                int qty = parseInt(args[2], 1);
+                String cur = (args.length >= 4) ? args[3].toUpperCase(Locale.ROOT) : market.defaultCurrency(p);
+
+                boolean ok = market.sell(p, id, qty, cur);
+
+                p.sendMessage(ok
+                        ? text("Sold.", GREEN)
+                        : text("Sell failed (not enough items? invalid commodity? treasury broke? sell price is 0?).", RED)
+                );
+                return true;
+            }
+
             default -> {
-                return usage(p);
+                return usage(p, "/market");
             }
         }
     }
 
-    private boolean usage(Player p) {
-        p.sendMessage(text("Usage:", YELLOW));
-        p.sendMessage(text("/market price <commodity> [currency]", GRAY));
-        p.sendMessage(text("/market buy|sell ...", GRAY));
+    private boolean usage(Player p, String u) {
+        p.sendMessage(text("Usage: ", RED).append(text(u, YELLOW)));
         return true;
     }
 
-    private boolean usage(Player p, String line) {
-        p.sendMessage(text("Usage: ", YELLOW).append(text(line, GRAY)));
-        return true;
-    }
-
-    private static String trimDouble(double d) {
-        // small utility, keeps your output clean
-        if (Double.isNaN(d) || Double.isInfinite(d)) return "0";
-        String s = String.format(Locale.ROOT, "%.2f", d);
-        // strip trailing .00
-        if (s.endsWith(".00")) return s.substring(0, s.length() - 3);
-        // strip trailing 0
-        if (s.endsWith("0")) return s.substring(0, s.length() - 1);
-        return s;
+    private int parseInt(String s, int def) {
+        try {
+            return Math.max(1, Integer.parseInt(s));
+        } catch (Exception e) {
+            return def;
+        }
     }
 }

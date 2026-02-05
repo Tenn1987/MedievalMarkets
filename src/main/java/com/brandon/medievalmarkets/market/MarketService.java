@@ -115,7 +115,6 @@ public final class MarketService {
         return v * r;
     }
 
-
     /* =========================
        Trades
        ========================= */
