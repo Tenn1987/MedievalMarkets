@@ -31,7 +31,7 @@ public final class MarketLedger {
     }
 
     /* =========================
-       Reading
+       Reading (per-town)
        ========================= */
 
     public int supply(UUID townId, String commodityId) {
@@ -47,8 +47,44 @@ public final class MarketLedger {
     }
 
     /* =========================
-       Optional decay (future)
+       Reading (GLOBAL)
        ========================= */
-    // You can later add a scheduled task that slowly nudges
-    // supply/demand back toward BASELINE.
+
+    public int globalSupply(String commodityId) {
+        if (commodityId == null) return BASELINE;
+
+        long total = 0L;
+        boolean any = false;
+
+        for (Map<String, Integer> m : supply.values()) {
+            Integer v = m.get(commodityId);
+            if (v != null) {
+                any = true;
+                total += v;
+            }
+        }
+
+        if (!any) return BASELINE;
+        if (total > Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return (int) Math.max(1L, total);
+    }
+
+    public int globalDemand(String commodityId) {
+        if (commodityId == null) return BASELINE;
+
+        long total = 0L;
+        boolean any = false;
+
+        for (Map<String, Integer> m : demand.values()) {
+            Integer v = m.get(commodityId);
+            if (v != null) {
+                any = true;
+                total += v;
+            }
+        }
+
+        if (!any) return BASELINE;
+        if (total > Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return (int) Math.max(1L, total);
+    }
 }

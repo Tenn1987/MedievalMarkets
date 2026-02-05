@@ -6,6 +6,7 @@ import com.brandon.medievalmarkets.market.commands.MarketCommand;
 import com.brandon.mpcbridge.api.MpcEconomy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MedievalMarketsPlugin extends JavaPlugin {
@@ -56,17 +57,37 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
             marketService.setWildernessDefaultCurrency(getConfig().getString("economy.default-currency", "SHEKEL"));
             marketService.init();
 
+            // ✅ CRITICAL: expose MarketService to other plugins (MPC) as a live price oracle
+            Bukkit.getServicesManager().register(
+                    MarketService.class,
+                    marketService,
+                    this,
+                    ServicePriority.Normal
+            );
 
-            // Register commands AFTER service exists
+            /* =========================
+               Commands
+               ========================= */
             if (getCommand("market") != null) {
                 getCommand("market").setExecutor(new MarketCommand(marketService));
             }
             if (getCommand("markets") != null) {
                 getCommand("markets").setExecutor(new MarketCommand(marketService));
             }
+
+            getLogger().info("MedievalMarkets hooks + services ready.");
         });
 
         getLogger().info("MedievalMarkets enabled (hooks pending).");
+    }
+
+    @Override
+    public void onDisable() {
+        // Cleanly unregister services to avoid stale providers on /reload
+        try {
+            Bukkit.getServicesManager().unregister(MarketService.class, marketService);
+        } catch (Throwable ignored) {
+        }
     }
 
     public BabBurgHook getBabHook() {
@@ -75,5 +96,9 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
 
     public MpcEconomy getEconomy() {
         return economy;
+    }
+
+    public MarketService getMarketService() {
+        return marketService;
     }
 }

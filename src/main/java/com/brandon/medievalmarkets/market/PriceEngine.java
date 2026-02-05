@@ -28,4 +28,22 @@ public final class PriceEngine {
         // base * (demand/supply)^elasticity
         return base * Math.pow(ratio, elasticity);
     }
+
+    /**
+     * Global price across all towns (sums supply/demand).
+     * This is what you want for commodity-backed currency value so coins aren't different per town.
+     */
+    public double globalCommodityValue(String commodityId) {
+        Commodity c = commodities.get(commodityId);
+        if (c == null) return 0.0;
+
+        double base = c.baseValue();
+        double elasticity = c.elasticity();
+
+        int supply = Math.max(1, ledger.globalSupply(commodityId));
+        int demand = Math.max(1, ledger.globalDemand(commodityId));
+
+        double ratio = (double) demand / (double) supply;
+        return base * Math.pow(ratio, elasticity);
+    }
 }

@@ -129,6 +129,39 @@ public final class MarketService {
     }
 
     /* =========================
+       GLOBAL (for MPC backing)
+       ========================= */
+
+    private String findCommodityId(Material mat) {
+        if (mat == null) return null;
+        for (Commodity c : commodities.values()) {
+            if (c.material() == mat) return c.id();
+        }
+        return null;
+    }
+
+    /**
+     * Reference value of a raw material in REFERENCE currency units (your base values).
+     * This is GLOBAL across all towns and WILL fluctuate as ledger totals change.
+     *
+     * MPC should use this to value COMMODITY-backed currencies.
+     */
+    public double referenceValue(Material mat) {
+        if (prices == null || mat == null) return 0.0;
+        String id = findCommodityId(mat);
+        if (id == null) return 0.0;
+        return prices.globalCommodityValue(id);
+    }
+
+    /** Optional helper: global price each in a target currency code. */
+    public double referenceValueEach(String commodityId, String currencyCode) {
+        if (prices == null) return 0.0;
+        double v = prices.globalCommodityValue(commodityId);
+        double r = mpc.rate(currencyCode);
+        return v * r;
+    }
+
+    /* =========================
        Trades (taxed, integer-safe)
        ========================= */
 
