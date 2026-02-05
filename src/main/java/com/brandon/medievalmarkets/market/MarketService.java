@@ -7,8 +7,10 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.Plugin;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -34,7 +36,6 @@ public final class MarketService {
     }
 
     public void loadDefaults() {
-        // Load from config.yml (commodities section)
         FileConfiguration cfg = plugin.getConfig();
         ConfigurationSection sec = cfg.getConfigurationSection("commodities");
         if (sec == null) {
@@ -61,19 +62,16 @@ public final class MarketService {
             double baseValue = csec.getDouble("base-value", 1.0);
             double elasticity = csec.getDouble("elasticity", 0.4);
 
-            // Key is already lowercase from config, but enforce anyway:
             String id = key.toLowerCase(Locale.ROOT);
 
             register(new Commodity(id, mat, baseValue, elasticity));
 
-            // Seed the ledger so scarcityIndex isn't weird at boot
             ledger.recordSupply(id, seedSupply);
             ledger.recordDemand(id, seedDemand);
         }
 
         plugin.getLogger().info("[MedievalMarkets] Loaded " + commodities.size() + " commodities from config.");
     }
-
 
     /* =========================
        Queries / Accessors
@@ -88,7 +86,7 @@ public final class MarketService {
         return p != null && bab.isInBurg(p.getLocation());
     }
 
-    /** Default currency = burg adopted currency (e.g., Rome -> DEN); wilderness falls back to SHEKEL for display only. */
+    /** Default currency = burg adopted currency; wilderness falls back to SHEKEL for display only. */
     public String defaultCurrency(Player p) {
         if (p == null) return wildernessDefaultCurrency;
 
@@ -98,7 +96,6 @@ public final class MarketService {
         return wildernessDefaultCurrency;
     }
 
-    /** For commands that don't have a player context (rare), use wilderness default. */
     public String defaultCurrency() {
         return wildernessDefaultCurrency;
     }
@@ -129,36 +126,61 @@ public final class MarketService {
         Commodity c = commodities.get(commodityId);
         if (c == null || qty <= 0) return false;
 
-        double unit = priceEach(commodityId, currencyCode);
-        double total = unit * qty;
+        String cur = currencyCode.toUpperCase(Locale.ROOT);
+
+        double unit = priceEach(commodityId, cur);
+
+        long totalUnits;
+        try {
+            totalUnits = wholeUnits(unit, qty);
+        } catch (IllegalArgumentException ex) {
+            buyer.sendMessage(org.bukkit.ChatColor.RED + "Trade would require fractional coins. Adjust qty/pricing.");
+            return false;
+        }
+
+        double total = (double) totalUnits;
+
+        plugin.getLogger().info("[MM][BUY] burgTreasury=" + treasuryId
+                + " cur=" + cur
+                + " unit=" + unit + " qty=" + qty + " total=" + total);
 
         UUID playerId = buyer.getUniqueId();
 
-        // Withdraw from player
-        if (!mpc.withdraw(playerId, currencyCode, total)) return false;
+        try {
+            // Withdraw from player
+            if (!mpc.withdraw(playerId, cur, total)) return false;
 
-        // Deposit into town treasury
-        mpc.deposit(treasuryId, currencyCode, total);
+            // Deposit into town treasury
+            mpc.deposit(treasuryId, cur, total);
 
-        // Give items
-        ItemStack stack = new ItemStack(c.material(), qty);
-        var leftovers = buyer.getInventory().addItem(stack);
-        if (!leftovers.isEmpty()) {
-            int notGiven = leftovers.values().stream().mapToInt(ItemStack::getAmount).sum();
-            double refund = unit * notGiven;
-            if (refund > 0) {
-                // Refund: pull back from treasury then return to player (best-effort)
-                if (mpc.withdraw(treasuryId, currencyCode, refund)) {
-                    mpc.deposit(playerId, currencyCode, refund);
-                } else {
-                    mpc.deposit(playerId, currencyCode, refund);
+            // Give items
+            ItemStack stack = new ItemStack(c.material(), qty);
+            var leftovers = buyer.getInventory().addItem(stack);
+            if (!leftovers.isEmpty()) {
+                int notGiven = leftovers.values().stream().mapToInt(ItemStack::getAmount).sum();
+                long refundUnits = wholeUnits(unit, notGiven);
+                if (refundUnits > 0) {
+                    double refund = (double) refundUnits;
+
+                    // Refund: pull back from treasury then return to player (best-effort)
+                    if (mpc.withdraw(treasuryId, cur, refund)) {
+                        mpc.deposit(playerId, cur, refund);
+                    } else {
+                        // If treasury withdrawal fails, still refund player to avoid "paid but no item"
+                        mpc.deposit(playerId, cur, refund);
+                    }
                 }
             }
-        }
 
-        ledger.recordDemand(commodityId, qty);
-        mpc.recordPressure(currencyCode, +0.001 * qty);
-        return true;
+            ledger.recordDemand(commodityId, qty);
+            mpc.recordPressure(cur, +0.001 * qty);
+            return true;
+
+        } catch (RuntimeException ex) {
+            // Covers IllegalArgumentException from MPCBridge for fractional coin amounts, etc.
+            plugin.getLogger().warning("[MM][BUY] Exception: " + ex.getMessage());
+            return false;
+        }
     }
 
     /** SELL: burg treasury pays -> player receives. Disabled in wilderness. */
@@ -171,25 +193,53 @@ public final class MarketService {
         Commodity c = commodities.get(commodityId);
         if (c == null || qty <= 0) return false;
 
+        String cur = currencyCode.toUpperCase(Locale.ROOT);
+
         // Remove items first (restore if treasury can't pay)
         int removed = removeMaterial(seller, c.material(), qty);
         if (removed <= 0) return false;
 
-        double unit = priceEach(commodityId, currencyCode);
-        double payout = unit * removed;
+        double unit = priceEach(commodityId, cur);
 
-        // Treasury must be able to pay
-        if (!mpc.withdraw(treasuryId, currencyCode, payout)) {
+        long payoutUnits;
+        try {
+            payoutUnits = wholeUnits(unit, removed);
+        } catch (IllegalArgumentException ex) {
+            // Put items back; trade not allowed
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
+            seller.sendMessage(org.bukkit.ChatColor.RED + "Trade would require fractional coins. Adjust qty/pricing.");
             return false;
         }
 
-        // Pay player
-        mpc.deposit(seller.getUniqueId(), currencyCode, payout);
+        double payout = (double) payoutUnits;
 
-        ledger.recordSupply(commodityId, removed);
-        mpc.recordPressure(currencyCode, -0.001 * removed);
-        return true;
+        plugin.getLogger().info("[MM][SELL] commodity=" + commodityId
+                + " burgTreasury=" + treasuryId
+                + " cur=" + cur
+                + " removed=" + removed
+                + " unit=" + unit
+                + " payout=" + payout);
+
+        try {
+            // Treasury must be able to pay
+            if (!mpc.withdraw(treasuryId, cur, payout)) {
+                seller.getInventory().addItem(new ItemStack(c.material(), removed));
+                return false;
+            }
+
+            // Pay player
+            mpc.deposit(seller.getUniqueId(), cur, payout);
+
+            ledger.recordSupply(commodityId, removed);
+            mpc.recordPressure(cur, -0.001 * removed);
+            return true;
+
+        } catch (RuntimeException ex) {
+            // If MPCBridge rejects, restore items
+            seller.getInventory().addItem(new ItemStack(c.material(), removed));
+            plugin.getLogger().warning("[MM][SELL] Exception: " + ex.getMessage());
+            return false;
+        }
     }
 
     /* =========================
@@ -209,21 +259,48 @@ public final class MarketService {
         this.prices = engine;
     }
 
-    private int removeMaterial(Player p, Material mat, int qty) {
-        int remaining = qty;
+    /**
+     * Compute total coin units as a WHOLE long.
+     * Rejects fractional totals and overflow.
+     */
+    private static long wholeUnits(double unitPrice, int qty) {
+        if (qty <= 0) return 0L;
+        if (!Double.isFinite(unitPrice) || unitPrice <= 0) throw new IllegalArgumentException("bad unitPrice");
 
-        for (int slot = 0; slot < p.getInventory().getSize(); slot++) {
-            ItemStack it = p.getInventory().getItem(slot);
-            if (it == null || it.getType() != mat) continue;
+        BigDecimal bd = BigDecimal.valueOf(unitPrice)
+                .multiply(BigDecimal.valueOf(qty))
+                .stripTrailingZeros();
 
-            int take = Math.min(remaining, it.getAmount());
-            it.setAmount(it.getAmount() - take);
-            if (it.getAmount() <= 0) p.getInventory().setItem(slot, null);
+        if (bd.scale() > 0) throw new IllegalArgumentException("fractional coins");
+        return bd.longValueExact();
+    }
+
+    private int removeMaterial(Player p, Material mat, int amount) {
+        int remaining = amount;
+        PlayerInventory inv = p.getInventory();
+
+        for (int slot = 0; slot < inv.getSize(); slot++) {
+            ItemStack stack = inv.getItem(slot);
+            if (stack == null) continue;
+            if (stack.getType() != mat) continue;
+
+            int stackAmt = stack.getAmount();
+            int take = Math.min(stackAmt, remaining);
 
             remaining -= take;
+
+            if (stackAmt - take <= 0) {
+                inv.setItem(slot, null);
+            } else {
+                ItemStack newStack = stack.clone();
+                newStack.setAmount(stackAmt - take);
+                inv.setItem(slot, newStack);
+            }
+
             if (remaining <= 0) break;
         }
 
-        return qty - remaining;
+        p.updateInventory();
+        return amount - remaining;
     }
 }

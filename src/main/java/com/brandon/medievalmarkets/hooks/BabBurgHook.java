@@ -25,9 +25,10 @@ public final class BabBurgHook {
     private Constructor<?> cChunkClaim;         // new ChunkClaim(UUID, int, int)
 
     // Burg accessors (best-effort; resolved lazily)
-    private Method mBurgGetId;                  // getId()
+    private Method mBurgGetId;                  // getId() (optional legacy)
     private Method mBurgGetName;                // getName()
-    private Method mBurgGetCurrency;            // getAdoptedCurrencyCode() or getCurrencyCode() or getCurrency()
+    private Method mBurgGetCurrency;            // getAdoptedCurrencyCode()
+    private Method mBurgGetTreasuryUuid;        // getTreasuryUuid()  <-- NEW desired path
 
     public BabBurgHook(Plugin owner) {
         this.owner = owner;
@@ -44,7 +45,6 @@ public final class BabBurgHook {
 
     /**
      * Currency code at this location (if burg), else null.
-     * Tries several burg method names to stay compatible across BAB versions.
      */
     public String currencyAt(Location loc) {
         Object burg = burgAt(loc);
@@ -64,13 +64,23 @@ public final class BabBurgHook {
 
     /**
      * Treasury UUID for the burg at this location, or null if wilderness.
-     * Scheme: UUID.nameUUIDFromBytes(("burg:" + burgId).getBytes(UTF_8))
+     *
+     * Preferred: burg.getTreasuryUuid()
+     * Fallback: deterministic UUID from "burg:" + burgId (legacy compatibility)
      */
     public UUID treasuryIdAt(Location loc) {
         Object burg = burgAt(loc);
         if (burg == null) return null;
 
         try {
+            // Preferred modern accessor:
+            ensureBurgTreasuryAccessor(burg);
+            if (mBurgGetTreasuryUuid != null) {
+                Object v = mBurgGetTreasuryUuid.invoke(burg);
+                if (v instanceof UUID u) return u;
+            }
+
+            // Fallback legacy: burg id -> nameUUIDFromBytes
             ensureBurgIdAccessor(burg);
             if (mBurgGetId == null) return null;
 
@@ -79,6 +89,7 @@ public final class BabBurgHook {
             if (burgId == null || burgId.isBlank()) return null;
 
             return UUID.nameUUIDFromBytes(("burg:" + burgId).getBytes(StandardCharsets.UTF_8));
+
         } catch (Throwable t) {
             owner.getLogger().warning("[MM] BAB hook error (treasuryIdAt): " + t.getMessage());
             return null;
@@ -161,9 +172,13 @@ public final class BabBurgHook {
     private void ensureBurgCurrencyAccessor(Object burg) {
         if (mBurgGetCurrency != null) return;
 
-        // Try the likely ones first
         try { mBurgGetCurrency = burg.getClass().getMethod("getAdoptedCurrencyCode"); return; } catch (Throwable ignored) { }
         try { mBurgGetCurrency = burg.getClass().getMethod("getCurrencyCode"); return; } catch (Throwable ignored) { }
         try { mBurgGetCurrency = burg.getClass().getMethod("getCurrency"); } catch (Throwable ignored) { }
+    }
+
+    private void ensureBurgTreasuryAccessor(Object burg) {
+        if (mBurgGetTreasuryUuid != null) return;
+        try { mBurgGetTreasuryUuid = burg.getClass().getMethod("getTreasuryUuid"); } catch (Throwable ignored) { }
     }
 }
