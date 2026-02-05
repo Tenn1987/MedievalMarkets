@@ -137,7 +137,10 @@ public final class MarketService {
         if (prices == null) return 0.0;
         double v = prices.commodityValue(townId, commodityId);
         double r = mpc.rate(currencyCode);
-        return v * r;
+        if (!(r > 0.0) || Double.isNaN(r) || Double.isInfinite(r)) return 0.0;
+
+// Convert from SHEKEL -> target currency units
+        return v / r;
     }
 
     /* =========================
@@ -170,7 +173,8 @@ public final class MarketService {
         if (prices == null) return 0.0;
         double v = prices.globalCommodityValue(commodityId);
         double r = mpc.rate(currencyCode);
-        return v * r;
+        if (!(r > 0.0) || Double.isNaN(r) || Double.isInfinite(r)) return 0.0;
+        return v / r;
     }
 
     /* =========================
