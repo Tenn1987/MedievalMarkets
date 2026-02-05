@@ -2,9 +2,9 @@ package com.brandon.medievalmarkets.market;
 
 import com.brandon.medievalmarkets.hooks.BabBurgHook;
 import com.brandon.mpcbridge.api.MpcEconomy;
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -15,11 +15,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
+
 public final class MarketService {
 
     private final Plugin plugin;
     private final MpcEconomy mpc;
-    private final BabBurgHook bab; // optional hook into BAB
+    private final BabBurgHook bab;
 
     private final Map<String, Commodity> commodities = new HashMap<>();
     private final MarketLedger ledger = new MarketLedger();
@@ -28,22 +31,33 @@ public final class MarketService {
     // Wilderness default for price display only (no wilderness trades)
     private String wildernessDefaultCurrency = "SHEKEL";
 
+    // Safety: max tax rate (BaB clamps too, but never trust reflection)
+    private static final double MAX_TAX = 0.35;
+
     public MarketService(Plugin plugin, MpcEconomy mpc) {
         this.plugin = plugin;
         this.mpc = mpc;
         this.bab = new BabBurgHook(plugin);
     }
 
+    /* =========================
+       Init / Loading
+       ========================= */
+
+    public void init() {
+        loadDefaults();
+        this.prices = new PriceEngine(ledger, commodities);
+    }
+
     public void loadDefaults() {
+        commodities.clear();
+
         FileConfiguration cfg = plugin.getConfig();
         ConfigurationSection sec = cfg.getConfigurationSection("commodities");
         if (sec == null) {
             plugin.getLogger().warning("[MedievalMarkets] No 'commodities:' section found in config.yml");
             return;
         }
-
-        int seedSupply = cfg.getInt("market.seed-supply", 1000);
-        int seedDemand = cfg.getInt("market.seed-demand", 1000);
 
         for (String key : sec.getKeys(false)) {
             ConfigurationSection csec = sec.getConfigurationSection(key);
@@ -62,12 +76,14 @@ public final class MarketService {
             double elasticity = csec.getDouble("elasticity", 0.4);
 
             String id = key.toLowerCase(Locale.ROOT);
-
             register(new Commodity(id, mat, baseValue, elasticity));
-
         }
 
         plugin.getLogger().info("[MedievalMarkets] Loaded " + commodities.size() + " commodities from config.");
+    }
+
+    public void register(Commodity c) {
+        commodities.put(c.id(), c);
     }
 
     /* =========================
@@ -83,11 +99,11 @@ public final class MarketService {
         return p != null && bab.isInBurg(p.getLocation());
     }
 
+    /** Town identity == burg treasury UUID (institutional MPC wallet). */
     public UUID townId(Player p) {
         if (p == null) return null;
         return bab.treasuryIdAt(p.getLocation());
     }
-
 
     /** Default currency = burg adopted currency; wilderness falls back to SHEKEL for display only. */
     public String defaultCurrency(Player p) {
@@ -99,10 +115,6 @@ public final class MarketService {
         return wildernessDefaultCurrency;
     }
 
-    public String defaultCurrency() {
-        return wildernessDefaultCurrency;
-    }
-
     public void setWildernessDefaultCurrency(String code) {
         this.wildernessDefaultCurrency = (code == null || code.isBlank())
                 ? "SHEKEL"
@@ -110,84 +122,103 @@ public final class MarketService {
     }
 
     public double priceEach(UUID townId, String commodityId, String currencyCode) {
+        if (prices == null) return 0.0;
         double v = prices.commodityValue(townId, commodityId);
         double r = mpc.rate(currencyCode);
         return v * r;
     }
 
     /* =========================
-       Trades
+       Trades (taxed, integer-safe)
        ========================= */
 
     /** BUY: player pays -> burg treasury receives. Disabled in wilderness. */
     public boolean buy(Player buyer, String commodityId, int qty, String currencyCode) {
         if (buyer == null) return false;
 
-        UUID treasuryId = bab.treasuryIdAt(buyer.getLocation());
-        if (treasuryId == null) return false; // wilderness not allowed
+        UUID townId = bab.treasuryIdAt(buyer.getLocation());
+        if (townId == null) return false; // wilderness not allowed
 
         Commodity c = commodities.get(commodityId);
         if (c == null || qty <= 0) return false;
 
         String cur = currencyCode.toUpperCase(Locale.ROOT);
 
-        double unitRaw = priceEach(treasuryId, commodityId, cur);
+        // price in "coins per item" (raw float)
+        double unitRaw = priceEach(townId, commodityId, cur);
+        if (!(unitRaw > 0.0) || Double.isNaN(unitRaw) || Double.isInfinite(unitRaw)) return false;
 
-        long unitCoins = unitPriceBuyCoins(unitRaw);
-        if (unitCoins <= 0) return false;
+        // BUY rounds UP on TOTAL
+        long costCoins = safeCeilToLong(unitRaw * (double) qty);
+        if (costCoins <= 0) return false;
 
-        long totalUnits;
+        double taxRate = clampTax(bab.salesTaxRateAt(buyer.getLocation()));
+        long taxCoins = salesTax(costCoins, taxRate);
+
+        long grandCoins;
         try {
-            totalUnits = totalCoins(unitCoins, qty);
+            grandCoins = Math.addExact(costCoins, taxCoins);
         } catch (ArithmeticException ex) {
-            buyer.sendMessage(org.bukkit.ChatColor.RED + "Trade total overflow.");
+            buyer.sendMessage(text("Trade total overflow.", RED));
             return false;
         }
 
-        double unit = (double) unitCoins;
-        double total = (double) totalUnits;
-
-        plugin.getLogger().info("[MM][BUY] burgTreasury=" + treasuryId
-                + " cur=" + cur
-                + " unit=" + unit + " qty=" + qty + " total=" + total);
-
         UUID playerId = buyer.getUniqueId();
+
+        plugin.getLogger().info("[MM][BUY] town=" + townId
+                + " cur=" + cur
+                + " unitRaw=" + unitRaw
+                + " qty=" + qty
+                + " cost=" + costCoins
+                + " taxRate=" + taxRate
+                + " tax=" + taxCoins
+                + " grand=" + grandCoins);
 
         try {
             // Withdraw from player
-            if (!mpc.withdraw(playerId, cur, total)) return false;
+            if (!mpc.withdraw(playerId, cur, (double) grandCoins)) return false;
 
-            // Deposit into town treasury
-            mpc.deposit(treasuryId, cur, total);
+            // Deposit into town treasury (cost + tax)
+            mpc.deposit(townId, cur, (double) grandCoins);
 
             // Give items
             ItemStack stack = new ItemStack(c.material(), qty);
-            var leftovers = buyer.getInventory().addItem(stack);
-            if (!leftovers.isEmpty()) {
-                int notGiven = leftovers.values().stream().mapToInt(ItemStack::getAmount).sum();
+            Map<Integer, ItemStack> leftovers = buyer.getInventory().addItem(stack);
 
-                long refundUnits;
-                try {
-                    refundUnits = totalCoins(unitCoins, notGiven);
-                } catch (ArithmeticException ex) {
-                    refundUnits = 0L;
-                }
+            int notGiven = leftovers.values().stream().mapToInt(ItemStack::getAmount).sum();
+            int given = qty - notGiven;
 
-                if (refundUnits > 0) {
-                    double refund = (double) refundUnits;
+            if (notGiven > 0)
 
-                    // Refund: pull back from treasury then return to player (best-effort)
-                    if (mpc.withdraw(treasuryId, cur, refund)) {
-                        mpc.deposit(playerId, cur, refund);
-                    } else {
-                        // If treasury withdrawal fails, still refund player to avoid "paid but no item"
-                        mpc.deposit(playerId, cur, refund);
+                if (notGiven > 0) {
+                    // Compute what the player *should* have paid for the items actually received.
+                    long newCostCoins = safeCeilToLong(unitRaw * (double) given);
+                    long newTaxCoins = salesTax(newCostCoins, taxRate);
+
+                    long newGrand;
+                    try {
+                        newGrand = Math.addExact(newCostCoins, newTaxCoins);
+                    } catch (ArithmeticException ex) {
+                        newGrand = grandCoins; // no refund; ultra edge-case
+                    }
+
+                    long refundCoins = grandCoins - newGrand;
+                    if (refundCoins > 0) {
+                        // best-effort: reverse from town treasury then pay player
+                        if (mpc.withdraw(townId, cur, (double) refundCoins)) {
+                            mpc.deposit(playerId, cur, (double) refundCoins);
+                        } else {
+                            // If treasury withdraw fails, still refund player to avoid "paid but no item"
+                            mpc.deposit(playerId, cur, (double) refundCoins);
+                        }
                     }
                 }
+
+            if (given > 0) {
+                ledger.recordDemand(townId, commodityId, given);
+                mpc.recordPressure(cur, +0.001 * given);
             }
 
-            ledger.recordDemand(treasuryId, commodityId, qty);
-            mpc.recordPressure(cur, +0.001 * qty);
             return true;
 
         } catch (RuntimeException ex) {
@@ -200,61 +231,67 @@ public final class MarketService {
     public boolean sell(Player seller, String commodityId, int qty, String currencyCode) {
         if (seller == null) return false;
 
-        UUID treasuryId = bab.treasuryIdAt(seller.getLocation());
-        if (treasuryId == null) return false; // wilderness not allowed
+        UUID townId = bab.treasuryIdAt(seller.getLocation());
+        if (townId == null) return false; // wilderness not allowed
 
         Commodity c = commodities.get(commodityId);
         if (c == null || qty <= 0) return false;
 
         String cur = currencyCode.toUpperCase(Locale.ROOT);
 
-        // Remove items first (restore if treasury can't pay)
+        // Remove items first (restore if something fails)
         int removed = removeMaterial(seller, c.material(), qty);
         if (removed <= 0) return false;
 
-        double unitRaw = priceEach(treasuryId, commodityId, cur);
-
-        long unitCoins = unitPriceSellCoins(unitRaw);
-        if (unitCoins <= 0) {
+        double unitRaw = priceEach(townId, commodityId, cur);
+        if (!(unitRaw > 0.0) || Double.isNaN(unitRaw) || Double.isInfinite(unitRaw)) {
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
             return false;
         }
 
-        long payoutUnits;
-        try {
-            payoutUnits = totalCoins(unitCoins, removed);
-        } catch (ArithmeticException ex) {
+        // SELL rounds DOWN on TOTAL
+        long payoutCoins = safeFloorToLong(unitRaw * (double) removed);
+        if (payoutCoins <= 0) {
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
-            seller.sendMessage(org.bukkit.ChatColor.RED + "Trade total overflow.");
+            seller.sendMessage(text("Not worth 1 coin here in " + cur + ".", RED));
             return false;
         }
 
-        double unit = (double) unitCoins;
-        double payout = (double) payoutUnits;
+        double taxRate = clampTax(bab.salesTaxRateAt(seller.getLocation()));
+        long taxCoins = salesTax(payoutCoins, taxRate);
 
-        plugin.getLogger().info("[MM][SELL] commodity=" + commodityId
-                + " burgTreasury=" + treasuryId
+        long netCoins = payoutCoins - taxCoins;
+        if (netCoins <= 0) {
+            seller.getInventory().addItem(new ItemStack(c.material(), removed));
+            seller.sendMessage(text("Sale too small after tax.", RED));
+            return false;
+        }
+
+        plugin.getLogger().info("[MM][SELL] town=" + townId
                 + " cur=" + cur
+                + " unitRaw=" + unitRaw
                 + " removed=" + removed
-                + " unit=" + unit
-                + " payout=" + payout);
+                + " payout=" + payoutCoins
+                + " taxRate=" + taxRate
+                + " tax=" + taxCoins
+                + " net=" + netCoins);
 
         try {
-            // Treasury must be able to pay
-            if (!mpc.withdraw(treasuryId, cur, payout)) {
+            // Town treasury must be able to pay the NET amount (tax stays in town)
+            if (!mpc.withdraw(townId, cur, (double) netCoins)) {
                 seller.getInventory().addItem(new ItemStack(c.material(), removed));
+                seller.sendMessage(text("Town treasury cannot afford this purchase.", RED));
                 return false;
             }
 
-            // Pay player
-            mpc.deposit(seller.getUniqueId(), cur, payout);
+            // Pay player net
+            mpc.deposit(seller.getUniqueId(), cur, (double) netCoins);
 
-            ledger.recordSupply(treasuryId, commodityId, removed);
+            ledger.recordSupply(townId, commodityId, removed);
             mpc.recordPressure(cur, -0.001 * removed);
             return true;
 
         } catch (RuntimeException ex) {
-            // If MPCBridge rejects for any reason, restore items
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
             plugin.getLogger().warning("[MM][SELL] Exception: " + ex.getMessage());
             return false;
@@ -265,41 +302,29 @@ public final class MarketService {
        Helpers
        ========================= */
 
-    public void register(Commodity c) {
-        commodities.put(c.id(), c);
+    private double clampTax(double rate) {
+        if (!Double.isFinite(rate)) return 0.0;
+        if (rate < 0.0) return 0.0;
+        if (rate > MAX_TAX) return MAX_TAX;
+        return rate;
     }
 
-    public void init() {
-        loadDefaults();
-        setPriceEngine(new PriceEngine(ledger, commodities));
+    private long salesTax(long baseCoins, double rate) {
+        if (baseCoins <= 0) return 0L;
+        if (!(rate > 0.0)) return 0L;
+        return Math.max(0L, (long) Math.floor((double) baseCoins * rate));
     }
 
-    public void setPriceEngine(PriceEngine engine) {
-        this.prices = engine;
+    private long safeCeilToLong(double v) {
+        if (Double.isNaN(v) || Double.isInfinite(v) || v <= 0.0) return 0L;
+        if (v >= (double) Long.MAX_VALUE) return Long.MAX_VALUE;
+        return (long) Math.ceil(v);
     }
 
-    /**
-     * Market rule: prices are quoted in WHOLE coin units.
-     *
-     * To prevent exploits:
-     *  - BUY (player pays): round UP so the town never undercharges.
-     *  - SELL (town pays): round DOWN so the town never overpays.
-     *
-     * Totals use multiplyExact to prevent long overflow corruption.
-     */
-    private static long unitPriceBuyCoins(double rawUnitPrice) {
-        if (!Double.isFinite(rawUnitPrice) || rawUnitPrice <= 0) return 0L;
-        return (long) Math.ceil(rawUnitPrice);
-    }
-
-    private static long unitPriceSellCoins(double rawUnitPrice) {
-        if (!Double.isFinite(rawUnitPrice) || rawUnitPrice <= 0) return 0L;
-        return (long) Math.floor(rawUnitPrice);
-    }
-
-    private static long totalCoins(long unitCoins, int qty) {
-        if (unitCoins <= 0 || qty <= 0) return 0L;
-        return Math.multiplyExact(unitCoins, (long) qty);
+    private long safeFloorToLong(double v) {
+        if (Double.isNaN(v) || Double.isInfinite(v) || v <= 0.0) return 0L;
+        if (v >= (double) Long.MAX_VALUE) return Long.MAX_VALUE;
+        return (long) Math.floor(v);
     }
 
     private int removeMaterial(Player p, Material mat, int amount) {

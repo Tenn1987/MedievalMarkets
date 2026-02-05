@@ -28,7 +28,8 @@ public final class BabBurgHook {
     private Method mBurgGetId;                  // getId() (optional legacy)
     private Method mBurgGetName;                // getName()
     private Method mBurgGetCurrency;            // getAdoptedCurrencyCode()
-    private Method mBurgGetTreasuryUuid;        // getTreasuryUuid()  <-- NEW desired path
+    private Method mBurgGetTreasuryUuid;        // getTreasuryUuid()
+    private Method mBurgGetSalesTaxRate;        // getSalesTaxRate()
 
     public BabBurgHook(Plugin owner) {
         this.owner = owner;
@@ -43,9 +44,7 @@ public final class BabBurgHook {
         return burgAt(loc) != null;
     }
 
-    /**
-     * Currency code at this location (if burg), else null.
-     */
+    /** Currency code at this location (if burg), else null. */
     public String currencyAt(Location loc) {
         Object burg = burgAt(loc);
         if (burg == null) return null;
@@ -93,6 +92,33 @@ public final class BabBurgHook {
         } catch (Throwable t) {
             owner.getLogger().warning("[MM] BAB hook error (treasuryIdAt): " + t.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Sales tax rate at this location (0.05 = 5%). Returns 0.0 if wilderness or if BAB doesn't support it.
+     * Clamped to 0.00 - 0.35 as a safety measure.
+     */
+    public double salesTaxRateAt(Location loc) {
+        Object burg = burgAt(loc);
+        if (burg == null) return 0.0;
+
+        try {
+            ensureBurgSalesTaxAccessor(burg);
+            if (mBurgGetSalesTaxRate == null) return 0.0;
+
+            Object v = mBurgGetSalesTaxRate.invoke(burg);
+            if (!(v instanceof Number n)) return 0.0;
+
+            double rate = n.doubleValue();
+            if (!Double.isFinite(rate)) return 0.0;
+
+            if (rate < 0.0) rate = 0.0;
+            if (rate > 0.35) rate = 0.35;
+            return rate;
+
+        } catch (Throwable t) {
+            return 0.0;
         }
     }
 
@@ -180,5 +206,10 @@ public final class BabBurgHook {
     private void ensureBurgTreasuryAccessor(Object burg) {
         if (mBurgGetTreasuryUuid != null) return;
         try { mBurgGetTreasuryUuid = burg.getClass().getMethod("getTreasuryUuid"); } catch (Throwable ignored) { }
+    }
+
+    private void ensureBurgSalesTaxAccessor(Object burg) {
+        if (mBurgGetSalesTaxRate != null) return;
+        try { mBurgGetSalesTaxRate = burg.getClass().getMethod("getSalesTaxRate"); } catch (Throwable ignored) { }
     }
 }
