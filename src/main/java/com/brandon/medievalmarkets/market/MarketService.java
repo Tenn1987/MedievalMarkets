@@ -10,6 +10,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.Plugin;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -26,6 +27,7 @@ public final class MarketService {
 
     private final Map<String, Commodity> commodities = new HashMap<>();
     private final MarketLedger ledger = new MarketLedger();
+    private final File ledgerFile;
     private PriceEngine prices;
 
     // Wilderness default for price display only (no wilderness trades)
@@ -38,6 +40,7 @@ public final class MarketService {
         this.plugin = plugin;
         this.mpc = mpc;
         this.bab = new BabBurgHook(plugin);
+        this.ledgerFile = new File(plugin.getDataFolder(), "market-ledger.yml");
     }
 
     /* =========================
@@ -46,6 +49,7 @@ public final class MarketService {
 
     public void init() {
         loadDefaults();
+        loadLedger();
         this.prices = new PriceEngine(ledger, commodities);
     }
 
@@ -80,6 +84,14 @@ public final class MarketService {
         }
 
         plugin.getLogger().info("[MedievalMarkets] Loaded " + commodities.size() + " commodities from config.");
+    }
+
+    public void loadLedger() {
+        ledger.loadFromFile(plugin, ledgerFile);
+    }
+
+    public void saveLedger() {
+        ledger.saveToFile(plugin, ledgerFile);
     }
 
     public void register(Commodity c) {

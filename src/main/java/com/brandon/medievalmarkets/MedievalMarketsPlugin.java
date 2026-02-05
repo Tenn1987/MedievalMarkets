@@ -83,6 +83,9 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (marketService != null) {
+            marketService.saveLedger();
+        }
         // Cleanly unregister services to avoid stale providers on /reload
         try {
             Bukkit.getServicesManager().unregister(MarketService.class, marketService);
