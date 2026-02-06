@@ -117,6 +117,12 @@ public final class MarketService {
         return bab.treasuryIdAt(p.getLocation());
     }
 
+    public String burgName(Player p) {
+        if (p == null) return null;
+        return bab.burgNameAt(p.getLocation());
+    }
+
+
     /** Default currency = burg adopted currency; wilderness falls back to SHEKEL for display only. */
     public String defaultCurrency(Player p) {
         if (p == null) return wildernessDefaultCurrency;

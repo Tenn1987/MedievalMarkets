@@ -44,6 +44,27 @@ public final class BabBurgHook {
         return burgAt(loc) != null;
     }
 
+    /** Burg name at this location (if burg), else null. */
+    public String burgNameAt(Location loc) {
+        Object burg = burgAt(loc);
+        if (burg == null) return null;
+
+        try {
+            // ensureBurgIdAccessor also resolves getName() in your hook
+            ensureBurgIdAccessor(burg);
+            if (mBurgGetName == null) return null;
+
+            Object v = mBurgGetName.invoke(burg);
+            if (v == null) return null;
+
+            String name = String.valueOf(v).trim();
+            return name.isBlank() ? null : name;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+
     /** Currency code at this location (if burg), else null. */
     public String currencyAt(Location loc) {
         Object burg = burgAt(loc);
