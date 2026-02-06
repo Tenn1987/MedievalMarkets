@@ -28,6 +28,7 @@ public final class MarketService {
     private final Map<String, Commodity> commodities = new HashMap<>();
     private final MarketLedger ledger = new MarketLedger();
     private final File ledgerFile;
+
     private PriceEngine prices;
 
     // Wilderness default for price display only (no wilderness trades)
@@ -35,6 +36,29 @@ public final class MarketService {
 
     // Safety: max tax rate (BaB clamps too, but never trust reflection)
     private static final double MAX_TAX = 0.35;
+
+    /* =========================
+       Liquidity defense tuning
+       =========================
+       As treasury runs low, widen spread to protect itself:
+       - BUY becomes more expensive (burg earns more)
+       - SELL becomes cheaper (burg pays less)
+     */
+
+    /** Config key: market.treasury-target */
+    private static final double DEFAULT_TREASURY_TARGET = 10_000.0;
+
+    /** At max stress (treasury empty), buy multiplier is 1.0 + BUY_SPREAD_A. */
+    private static final double BUY_SPREAD_A = 1.00; // max 2x at stress=1
+
+    /** At max stress (treasury empty), sell multiplier is 1.0 - SELL_SPREAD_B (clamped). */
+    private static final double SELL_SPREAD_B = 0.80; // down to 0.20x at stress=1 (before clamp)
+
+    /** Never allow sell multiplier to go below this (prevents perpetual 0 offers). */
+    private static final double MIN_SELL_MULT = 0.10;
+
+    /** Reflection cache for MPC balance lookup (API differs across versions). */
+    private transient java.lang.reflect.Method mpcBalanceMethod;
 
     public MarketService(Plugin plugin, MpcEconomy mpc) {
         this.plugin = plugin;
@@ -122,7 +146,6 @@ public final class MarketService {
         return bab.burgNameAt(p.getLocation());
     }
 
-
     /** Default currency = burg adopted currency; wilderness falls back to SHEKEL for display only. */
     public String defaultCurrency(Player p) {
         if (p == null) return wildernessDefaultCurrency;
@@ -139,14 +162,61 @@ public final class MarketService {
                 : code.toUpperCase(Locale.ROOT);
     }
 
+    /**
+     * Base market price EACH in the requested currency (no liquidity defense spread).
+     * Uses the town's local supply/demand ledger and converts from SHEKEL by forex rate.
+     */
     public double priceEach(UUID townId, String commodityId, String currencyCode) {
         if (prices == null) return 0.0;
-        double v = prices.commodityValue(townId, commodityId);
+
+        double v = prices.commodityValue(townId, commodityId); // in SHEKEL
         double r = mpc.rate(currencyCode);
         if (!(r > 0.0) || Double.isNaN(r) || Double.isInfinite(r)) return 0.0;
 
-// Convert from SHEKEL -> target currency units
+        // SHEKEL -> target currency
         return v / r;
+    }
+
+    /** Quote object: base raw (market) plus treasury-defense BUY/SELL unit prices and integer each. */
+    public static final class Quote {
+        public final double raw;       // base market price each (in requested currency)
+        public final double buyUnit;   // liquidity-defended buy unit price (float)
+        public final double sellUnit;  // liquidity-defended sell unit price (float)
+        public final long buyEach;     // ceil(buyUnit)
+        public final long sellEach;    // floor(sellUnit)
+        public final double stress;    // 0..1
+
+        private Quote(double raw, double buyUnit, double sellUnit, long buyEach, long sellEach, double stress) {
+            this.raw = raw;
+            this.buyUnit = buyUnit;
+            this.sellUnit = sellUnit;
+            this.buyEach = buyEach;
+            this.sellEach = sellEach;
+            this.stress = stress;
+        }
+    }
+
+    /** Compute a local quote with treasury defense applied. */
+    public Quote quote(UUID townId, String commodityId, String currencyCode) {
+        String cur = currencyCode.toUpperCase(Locale.ROOT);
+
+        double raw = priceEach(townId, commodityId, cur);
+        if (!(raw > 0.0) || Double.isNaN(raw) || Double.isInfinite(raw)) {
+            return new Quote(0.0, 0.0, 0.0, 0L, 0L, 0.0);
+        }
+
+        double stress = treasuryStress01(townId, cur);
+
+        double buyMult = 1.0 + (BUY_SPREAD_A * stress);
+        double sellMult = Math.max(MIN_SELL_MULT, 1.0 - (SELL_SPREAD_B * stress));
+
+        double buyUnit = raw * buyMult;
+        double sellUnit = raw * sellMult;
+
+        long buyEach = safeCeilToLong(buyUnit);
+        long sellEach = safeFloorToLong(sellUnit);
+
+        return new Quote(raw, buyUnit, sellUnit, buyEach, sellEach, stress);
     }
 
     /* =========================
@@ -199,12 +269,11 @@ public final class MarketService {
 
         String cur = currencyCode.toUpperCase(Locale.ROOT);
 
-        // price in "coins per item" (raw float)
-        double unitRaw = priceEach(townId, commodityId, cur);
-        if (!(unitRaw > 0.0) || Double.isNaN(unitRaw) || Double.isInfinite(unitRaw)) return false;
+        Quote q = quote(townId, commodityId, cur);
+        if (!(q.buyUnit > 0.0) || Double.isNaN(q.buyUnit) || Double.isInfinite(q.buyUnit)) return false;
 
         // BUY rounds UP on TOTAL
-        long costCoins = safeCeilToLong(unitRaw * (double) qty);
+        long costCoins = safeCeilToLong(q.buyUnit * (double) qty);
         if (costCoins <= 0) return false;
 
         double taxRate = clampTax(bab.salesTaxRateAt(buyer.getLocation()));
@@ -220,15 +289,6 @@ public final class MarketService {
 
         UUID playerId = buyer.getUniqueId();
 
-        plugin.getLogger().info("[MM][BUY] town=" + townId
-                + " cur=" + cur
-                + " unitRaw=" + unitRaw
-                + " qty=" + qty
-                + " cost=" + costCoins
-                + " taxRate=" + taxRate
-                + " tax=" + taxCoins
-                + " grand=" + grandCoins);
-
         try {
             // Withdraw from player
             if (!mpc.withdraw(playerId, cur, (double) grandCoins)) return false;
@@ -243,31 +303,29 @@ public final class MarketService {
             int notGiven = leftovers.values().stream().mapToInt(ItemStack::getAmount).sum();
             int given = qty - notGiven;
 
-            if (notGiven > 0)
+            if (notGiven > 0) {
+                // Refund for items not delivered (using same defended buyUnit)
+                long newCostCoins = safeCeilToLong(q.buyUnit * (double) given);
+                long newTaxCoins = salesTax(newCostCoins, taxRate);
 
-                if (notGiven > 0) {
-                    // Compute what the player *should* have paid for the items actually received.
-                    long newCostCoins = safeCeilToLong(unitRaw * (double) given);
-                    long newTaxCoins = salesTax(newCostCoins, taxRate);
+                long newGrand;
+                try {
+                    newGrand = Math.addExact(newCostCoins, newTaxCoins);
+                } catch (ArithmeticException ex) {
+                    newGrand = grandCoins; // no refund; extreme edge-case
+                }
 
-                    long newGrand;
-                    try {
-                        newGrand = Math.addExact(newCostCoins, newTaxCoins);
-                    } catch (ArithmeticException ex) {
-                        newGrand = grandCoins; // no refund; ultra edge-case
-                    }
-
-                    long refundCoins = grandCoins - newGrand;
-                    if (refundCoins > 0) {
-                        // best-effort: reverse from town treasury then pay player
-                        if (mpc.withdraw(townId, cur, (double) refundCoins)) {
-                            mpc.deposit(playerId, cur, (double) refundCoins);
-                        } else {
-                            // If treasury withdraw fails, still refund player to avoid "paid but no item"
-                            mpc.deposit(playerId, cur, (double) refundCoins);
-                        }
+                long refundCoins = grandCoins - newGrand;
+                if (refundCoins > 0) {
+                    // best-effort: reverse from town treasury then pay player
+                    if (mpc.withdraw(townId, cur, (double) refundCoins)) {
+                        mpc.deposit(playerId, cur, (double) refundCoins);
+                    } else {
+                        // If treasury withdraw fails, still refund player to avoid "paid but no item"
+                        mpc.deposit(playerId, cur, (double) refundCoins);
                     }
                 }
+            }
 
             if (given > 0) {
                 ledger.recordDemand(townId, commodityId, given);
@@ -298,14 +356,14 @@ public final class MarketService {
         int removed = removeMaterial(seller, c.material(), qty);
         if (removed <= 0) return false;
 
-        double unitRaw = priceEach(townId, commodityId, cur);
-        if (!(unitRaw > 0.0) || Double.isNaN(unitRaw) || Double.isInfinite(unitRaw)) {
+        Quote q = quote(townId, commodityId, cur);
+        if (!(q.sellUnit > 0.0) || Double.isNaN(q.sellUnit) || Double.isInfinite(q.sellUnit)) {
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
             return false;
         }
 
         // SELL rounds DOWN on TOTAL
-        long payoutCoins = safeFloorToLong(unitRaw * (double) removed);
+        long payoutCoins = safeFloorToLong(q.sellUnit * (double) removed);
         if (payoutCoins <= 0) {
             seller.getInventory().addItem(new ItemStack(c.material(), removed));
             seller.sendMessage(text("Not worth 1 coin here in " + cur + ".", RED));
@@ -321,15 +379,6 @@ public final class MarketService {
             seller.sendMessage(text("Sale too small after tax.", RED));
             return false;
         }
-
-        plugin.getLogger().info("[MM][SELL] town=" + townId
-                + " cur=" + cur
-                + " unitRaw=" + unitRaw
-                + " removed=" + removed
-                + " payout=" + payoutCoins
-                + " taxRate=" + taxRate
-                + " tax=" + taxCoins
-                + " net=" + netCoins);
 
         try {
             // Town treasury must be able to pay the NET amount (tax stays in town)
@@ -354,7 +403,61 @@ public final class MarketService {
     }
 
     /* =========================
-       Helpers
+       Liquidity helpers
+       ========================= */
+
+    private double treasuryTarget() {
+        try {
+            return plugin.getConfig().getDouble("market.treasury-target", DEFAULT_TREASURY_TARGET);
+        } catch (Exception ignored) {
+            return DEFAULT_TREASURY_TARGET;
+        }
+    }
+
+    /** Returns stress in [0..1]. 0 = healthy, 1 = broke. */
+    private double treasuryStress01(UUID townId, String currencyCode) {
+        double target = Math.max(1.0, treasuryTarget());
+        double bal = mpcBalanceSafe(townId, currencyCode);
+
+        // If we can't read balance (API mismatch), assume healthy (no artificial spread).
+        if (!Double.isFinite(bal)) return 0.0;
+
+        double t = bal / target;
+        if (t < 0.0) t = 0.0;
+        if (t > 1.0) t = 1.0;
+
+        return 1.0 - t;
+    }
+
+    /**
+     * Balance lookup via reflection so we don't hard-lock on an MPCBridge method name.
+     * Tries: balance(UUID,String), getBalance(UUID,String)
+     */
+    private double mpcBalanceSafe(UUID wallet, String cur) {
+        try {
+            if (mpcBalanceMethod == null) {
+                // Try common names
+                try {
+                    mpcBalanceMethod = mpc.getClass().getMethod("balance", UUID.class, String.class);
+                } catch (NoSuchMethodException ignored) {
+                    mpcBalanceMethod = mpc.getClass().getMethod("getBalance", UUID.class, String.class);
+                }
+            }
+
+            Object v = mpcBalanceMethod.invoke(mpc, wallet, cur);
+            if (v instanceof Number n) return n.doubleValue();
+
+            // Sometimes APIs return primitive double boxed as Double
+            if (v instanceof Double d) return d;
+
+            return Double.NaN;
+        } catch (Throwable t) {
+            return Double.NaN;
+        }
+    }
+
+    /* =========================
+       General helpers
        ========================= */
 
     private double clampTax(double rate) {
