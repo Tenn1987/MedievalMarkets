@@ -5,7 +5,7 @@
 
     <groupId>com.brandon</groupId>
     <artifactId>medievalmarkets</artifactId>
-    <version>0.1.6</version>
+    <version>0.2.2</version>
     <name>MedievalMarkets</name>
     <packaging>jar</packaging>
 
@@ -26,18 +26,16 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.21.1-R0.1-SNAPSHOT</version>
+            <version>1.21.11-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.brandon</groupId>
             <artifactId>MPCBridge</artifactId>
-            <version>0.0.2</version>
+            <version>0.0.6</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
-
-
 
 
     <build>

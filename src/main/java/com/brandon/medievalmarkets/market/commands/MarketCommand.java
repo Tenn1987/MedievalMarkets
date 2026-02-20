@@ -90,18 +90,17 @@ public final class MarketCommand implements CommandExecutor {
                                 .append(text(id, YELLOW))
                                 .append(text(" @ ", GRAY))
                                 .append(text("BUY ", GRAY))
-                                .append(text(q.buyEach, GREEN))
+                                .append(text(q.buyEach(), GREEN))
                                 .append(text(" / ", DARK_GRAY))
                                 .append(text("SELL ", GRAY))
-                                .append(text(q.sellEach, AQUA))
+                                .append(text(q.sellEach(), AQUA))
                                 .append(text(" ", GRAY))
                                 .append(text(cur, GOLD))
-                                .append(text(" (raw: " + fmt(q.raw) + ")", DARK_GRAY))
+                                .append(text(" (raw: " + fmt(q.raw()) + ")", DARK_GRAY))
                 );
 
-                if (q.sellEach <= 0) {
-                    p.sendMessage(text("This item is currently worth < 1 coin here in " + cur + " (sell floors to 0).", RED));
-                    p.sendMessage(text("Try selling more at once, or use a stronger currency.", GRAY));
+                if (q.sellEach() <= 0) {
+                    p.sendMessage(text("This commodity currently has no sell value here.", RED));
                 }
 
                 return true;
@@ -110,44 +109,42 @@ public final class MarketCommand implements CommandExecutor {
             case "buy" -> {
                 if (args.length < 3) return usage(p, "/market buy <commodity> <qty> [currency]");
 
-                if (!market.isInMarketZone(p)) {
+                UUID townId = market.townId(p);
+                if (townId == null) {
                     p.sendMessage(text("No wilderness markets.", RED));
                     p.sendMessage(text("Trade inside a burg.", GRAY));
                     return true;
                 }
 
                 String id = args[1].toLowerCase(Locale.ROOT);
-                int qty = parseInt(args[2], 1);
+                int qty = parseInt(args[2], 0);
+                if (qty <= 0) return usage(p, "/market buy <commodity> <qty> [currency]");
+
                 String cur = (args.length >= 4) ? args[3].toUpperCase(Locale.ROOT) : market.defaultCurrency(p);
 
                 boolean ok = market.buy(p, id, qty, cur);
-
-                p.sendMessage(ok
-                        ? text("Bought.", GREEN)
-                        : text("Buy failed (funds? invalid commodity? inventory full?).", RED)
-                );
+                p.sendMessage(ok ? text("Bought.", GREEN) : text("Buy failed.", RED));
                 return true;
             }
 
             case "sell" -> {
                 if (args.length < 3) return usage(p, "/market sell <commodity> <qty> [currency]");
 
-                if (!market.isInMarketZone(p)) {
+                UUID townId = market.townId(p);
+                if (townId == null) {
                     p.sendMessage(text("No wilderness markets.", RED));
                     p.sendMessage(text("Trade inside a burg.", GRAY));
                     return true;
                 }
 
                 String id = args[1].toLowerCase(Locale.ROOT);
-                int qty = parseInt(args[2], 1);
+                int qty = parseInt(args[2], 0);
+                if (qty <= 0) return usage(p, "/market sell <commodity> <qty> [currency]");
+
                 String cur = (args.length >= 4) ? args[3].toUpperCase(Locale.ROOT) : market.defaultCurrency(p);
 
                 boolean ok = market.sell(p, id, qty, cur);
-
-                p.sendMessage(ok
-                        ? text("Sold.", GREEN)
-                        : text("Sell failed (not enough items? invalid commodity? treasury broke? sell price is 0?).", RED)
-                );
+                p.sendMessage(ok ? text("Sold.", GREEN) : text("Sell failed.", RED));
                 return true;
             }
 
@@ -173,16 +170,16 @@ public final class MarketCommand implements CommandExecutor {
         ArrayList<SimpleEntry<String, MarketService.Quote>> list = new ArrayList<>();
         market.commodities().forEach((id, c) -> {
             MarketService.Quote q = market.quote(townId, id, cur);
-            if (!(q.buyUnit > 0.0) || Double.isNaN(q.buyUnit) || Double.isInfinite(q.buyUnit)) return;
+            if (!(q.buyUnit() > 0.0) || Double.isNaN(q.buyUnit()) || Double.isInfinite(q.buyUnit())) return;
             list.add(new SimpleEntry<>(id, q));
         });
 
         // Sort by BUY each (defended), tie-break by raw
         list.sort((a, b) -> {
-            long ab = a.getValue().buyEach;
-            long bb = b.getValue().buyEach;
+            long ab = a.getValue().buyEach();
+            long bb = b.getValue().buyEach();
             int primary = Long.compare(ab, bb);
-            if (primary == 0) primary = Double.compare(a.getValue().raw, b.getValue().raw);
+            if (primary == 0) primary = Double.compare(a.getValue().raw(), b.getValue().raw());
             return hot ? -primary : primary;
         });
 
@@ -204,13 +201,13 @@ public final class MarketCommand implements CommandExecutor {
                     text((shown + 1) + ". ", GRAY)
                             .append(text(id, YELLOW))
                             .append(text("  BUY ", DARK_GRAY))
-                            .append(text(q.buyEach, GREEN))
+                            .append(text(q.buyEach(), GREEN))
                             .append(text(" / ", DARK_GRAY))
                             .append(text("SELL ", DARK_GRAY))
-                            .append(text(q.sellEach, AQUA))
+                            .append(text(q.sellEach(), AQUA))
                             .append(text(" ", DARK_GRAY))
                             .append(text(cur, GOLD))
-                            .append(text(" (raw: " + fmt(q.raw) + ")", DARK_GRAY))
+                            .append(text(" (raw: " + fmt(q.raw()) + ")", DARK_GRAY))
             );
 
             shown++;
@@ -228,15 +225,15 @@ public final class MarketCommand implements CommandExecutor {
         return true;
     }
 
-    private int parseInt(String s, int def) {
+    private static int parseInt(String s, int fallback) {
         try {
-            return Math.max(1, Integer.parseInt(s));
-        } catch (Exception e) {
-            return def;
+            return Integer.parseInt(s);
+        } catch (Exception ignored) {
+            return fallback;
         }
     }
 
-    private String fmt(double v) {
-        return String.format(Locale.US, "%.4f", v);
+    private static String fmt(double v) {
+        return String.format(Locale.US, "%.2f", v);
     }
 }

@@ -3,6 +3,9 @@ package com.brandon.medievalmarkets;
 import com.brandon.medievalmarkets.hooks.BabBurgHook;
 import com.brandon.medievalmarkets.market.MarketService;
 import com.brandon.medievalmarkets.market.commands.MarketCommand;
+import com.brandon.medievalmarkets.market.gui.MarketBarrelSignListener;
+import com.brandon.medievalmarkets.market.gui.MarketGUI;
+import com.brandon.medievalmarkets.market.gui.MarketGUIListener;
 import com.brandon.mpcbridge.api.MpcEconomy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -19,6 +22,10 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
     public void onEnable() {
 
         getLogger().info("MedievalMarkets enabling...");
+
+        // ✅ CONFIG MUST LOAD FIRST
+        saveDefaultConfig();
+        reloadConfig();
 
         // Delay everything that depends on other plugins
         Bukkit.getScheduler().runTask(this, () -> {
@@ -48,21 +55,37 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
             }
 
             /* =========================
-               MarketService (NOW we have deps)
+               MarketService
                ========================= */
             this.marketService = new MarketService(this, economy);
+            marketService.setWildernessDefaultCurrency(
+                    getConfig().getString("economy.default-currency", "SHEKEL")
+            );
 
-            saveDefaultConfig(); // ensures config exists on first run
-            reloadConfig();      // ensures latest values are loaded
-            marketService.setWildernessDefaultCurrency(getConfig().getString("economy.default-currency", "SHEKEL"));
+            // ✅ INIT AFTER CONFIG IS LOADED
             marketService.init();
 
-            // ✅ CRITICAL: expose MarketService to other plugins (MPC) as a live price oracle
+            getLogger().info("MarketService loaded with "
+                    + marketService.commodities().size() + " commodities.");
+
+            // ✅ REGISTER AS SERVICE
             Bukkit.getServicesManager().register(
                     MarketService.class,
                     marketService,
                     this,
                     ServicePriority.Normal
+            );
+
+            /* =========================
+               GUI (AFTER INIT)
+               ========================= */
+            MarketGUI marketGUI = new MarketGUI(this, marketService);
+
+            getServer().getPluginManager().registerEvents(
+                    new MarketBarrelSignListener(this, marketGUI), this
+            );
+            getServer().getPluginManager().registerEvents(
+                    new MarketGUIListener(marketGUI), this
             );
 
             /* =========================
@@ -83,25 +106,10 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (marketService != null) {
-            marketService.saveLedger();
-        }
-        // Cleanly unregister services to avoid stale providers on /reload
-        try {
-            Bukkit.getServicesManager().unregister(MarketService.class, marketService);
-        } catch (Throwable ignored) {
-        }
+        // Nothing critical to tear down yet
     }
 
-    public BabBurgHook getBabHook() {
-        return babHook;
-    }
-
-    public MpcEconomy getEconomy() {
-        return economy;
-    }
-
-    public MarketService getMarketService() {
-        return marketService;
-    }
+    public BabBurgHook babHook() { return babHook; }
+    public MarketService marketService() { return marketService; }
+    public MpcEconomy economy() { return economy; }
 }

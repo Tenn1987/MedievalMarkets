@@ -1,6 +1,5 @@
 package com.brandon.medievalmarkets.market.gui;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -13,89 +12,104 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Locale;
 
 public final class MarketBarrelSignListener implements Listener {
 
+    private final JavaPlugin plugin;
     private final MarketGUI gui;
 
-    public MarketBarrelSignListener(MarketGUI gui) {
+    public MarketBarrelSignListener(JavaPlugin plugin, MarketGUI gui) {
+        this.plugin = plugin;
         this.gui = gui;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onRightClickBarrel(PlayerInteractEvent e) {
-        // Main hand only (prevents double-open)
-        if (e.getHand() != EquipmentSlot.HAND) return;
+    /**
+     * IMPORTANT:
+     * BaB plot/anti-grief may cancel the interact event before we see it.
+     * So we MUST run even if cancelled, otherwise market becomes unusable.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onInteract(PlayerInteractEvent e) {
 
+        if (e.getHand() != EquipmentSlot.HAND) return;
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
-        Block barrel = e.getClickedBlock();
-        if (barrel == null || barrel.getType() != Material.BARREL) return;
+        Block clicked = e.getClickedBlock();
+        if (clicked == null) return;
 
-        Player p = e.getPlayer();
+        Player player = e.getPlayer();
 
-        // Only open GUI if there is a correctly-labeled sign attached to this barrel
-        if (!hasMarketSign(barrel)) return;
+        // CASE 1: Player clicked a BARREL
+        if (clicked.getType() == Material.BARREL) {
+            if (!hasMarketSign(clicked)) return;
+
+            e.setCancelled(true); // cancel vanilla barrel open
+            gui.openMain(player, 0);
+            return;
+        }
+
+        // CASE 2: Player clicked a SIGN
+        if (!isSign(clicked.getType())) return;
+
+        Sign sign;
+        try {
+            sign = (Sign) clicked.getState();
+        } catch (ClassCastException ex) {
+            return;
+        }
+
+        if (!isMarketSign(sign)) return;
+
+        Block attached = getAttachedBlock(clicked);
+        if (attached == null || attached.getType() != Material.BARREL) return;
 
         e.setCancelled(true);
-        gui.openMain(p);
+        gui.openMain(player, 0);
     }
 
-    private boolean hasMarketSign(Block barrel) {
-        // 1) Wall signs attached to the barrel (on any side)
-        for (BlockFace face : new BlockFace[]{BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
-            Block maybeSign = barrel.getRelative(face);
-            if (isWallSign(maybeSign) && isWallSignAttachedTo(maybeSign, barrel) && signSaysMarket(maybeSign)) {
-                return true;
-            }
-        }
+    /* ---------------- helpers ---------------- */
 
-        // 2) Standing sign on top of the barrel (rare but valid for "barrel with a sign")
-        Block above = barrel.getRelative(BlockFace.UP);
-        if (isStandingSign(above) && signSaysMarket(above)) {
-            return true;
-        }
+    private boolean isSign(Material m) {
+        return m.name().endsWith("_SIGN") || m.name().endsWith("_WALL_SIGN");
+    }
 
+    private boolean isMarketSign(Sign sign) {
+        for (String line : sign.getLines()) {
+            if (line == null) continue;
+            if (line.toLowerCase(Locale.ROOT).contains("[market]")) return true;
+        }
         return false;
     }
 
-    private boolean isWallSign(Block b) {
-        Material t = b.getType();
-        // Covers OAK_WALL_SIGN, SPRUCE_WALL_SIGN, etc.
-        return t.name().endsWith("_WALL_SIGN");
+    private boolean hasMarketSign(Block barrel) {
+        for (BlockFace face : BlockFace.values()) {
+            if (face == BlockFace.SELF) continue;
+
+            Block rel = barrel.getRelative(face);
+            if (!isSign(rel.getType())) continue;
+
+            Sign sign;
+            try {
+                sign = (Sign) rel.getState();
+            } catch (ClassCastException ex) {
+                continue;
+            }
+
+            if (!isMarketSign(sign)) continue;
+
+            Block attached = getAttachedBlock(rel);
+            if (attached != null && attached.equals(barrel)) return true;
+        }
+        return false;
     }
 
-    private boolean isStandingSign(Block b) {
-        Material t = b.getType();
-        // Covers OAK_SIGN, SPRUCE_SIGN, etc. (not wall sign)
-        return t.name().endsWith("_SIGN") && !t.name().endsWith("_WALL_SIGN");
-    }
-
-    private boolean isWallSignAttachedTo(Block signBlock, Block barrel) {
-        // A wall sign is "attached" to the block behind it (opposite its facing)
-        if (!(signBlock.getBlockData() instanceof Directional dir)) return false;
-
-        BlockFace facing = dir.getFacing();
-        BlockFace attachedFace = facing.getOppositeFace();
-        Block attachedTo = signBlock.getRelative(attachedFace);
-
-        return attachedTo.equals(barrel);
-    }
-
-    private boolean signSaysMarket(Block signBlock) {
-        if (!(signBlock.getState() instanceof Sign sign)) return false;
-
-        // Legacy API (works fine on Paper/Spigot 1.19+)
-        String line0 = sign.getLine(0);
-        if (line0 == null) return false;
-
-        String cleaned = ChatColor.stripColor(line0);
-        if (cleaned == null) cleaned = line0;
-
-        cleaned = cleaned.trim().toLowerCase(Locale.ROOT);
-
-        return cleaned.equals("[market]");
+    private Block getAttachedBlock(Block signBlock) {
+        if (!(signBlock.getBlockData() instanceof Directional dir)) return null;
+        // For wall signs, facing is the direction the sign LOOKS, attached is opposite
+        BlockFace attachedFace = dir.getFacing().getOppositeFace();
+        return signBlock.getRelative(attachedFace);
     }
 }

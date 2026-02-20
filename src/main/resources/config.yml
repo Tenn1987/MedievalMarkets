@@ -30,155 +30,196 @@ commodities:
   # ----------------------------
   wheat:
     material: WHEAT
-    base-value: 1.0
+    base-value: 3.0
     elasticity: 0.35
   bread:
     material: BREAD
-    base-value: 2.2
+    base-value: 6.6
     elasticity: 0.30
   carrot:
     material: CARROT
-    base-value: 0.8
+    base-value: 2.4
     elasticity: 0.30
   potato:
     material: POTATO
-    base-value: 0.8
+    base-value: 2.4
     elasticity: 0.30
   baked_potato:
     material: BAKED_POTATO
-    base-value: 1.4
+    base-value: 4.2
     elasticity: 0.25
   beetroot:
     material: BEETROOT
-    base-value: 0.7
+    base-value: 2.1
     elasticity: 0.30
   beetroot_soup:
     material: BEETROOT_SOUP
-    base-value: 3.0
+    base-value: 9.0
     elasticity: 0.25
   melon_slice:
     material: MELON_SLICE
-    base-value: 0.2
+    base-value: 1.35
     elasticity: 0.20
   pumpkin:
     material: PUMPKIN
-    base-value: 1.3
+    base-value: 3.9
     elasticity: 0.25
   pumpkin_pie:
     material: PUMPKIN_PIE
-    base-value: 3.5
+    base-value: 10.5
     elasticity: 0.25
   sugar_cane:
     material: SUGAR_CANE
-    base-value: 1.1
+    base-value: 3.3
     elasticity: 0.35
   sugar:
     material: SUGAR
-    base-value: 1.3
+    base-value: 3.9
     elasticity: 0.30
   cocoa_beans:
     material: COCOA_BEANS
-    base-value: 1.4
+    base-value: 4.2
     elasticity: 0.35
   cookie:
     material: COOKIE
-    base-value: 0.4
+    base-value: 1.65
     elasticity: 0.18
   sweet_berries:
     material: SWEET_BERRIES
-    base-value: 0.35
+    base-value: 1.65
     elasticity: 0.25
   glow_berries:
     material: GLOW_BERRIES
-    base-value: 0.7
+    base-value: 2.1
     elasticity: 0.35
   apple:
     material: APPLE
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.30
   golden_apple:
     material: GOLDEN_APPLE
-    base-value: 75.0
+    base-value: 225.0
     elasticity: 0.80
   enchanted_golden_apple:
     material: ENCHANTED_GOLDEN_APPLE
-    base-value: 650.0
+    base-value: 1950.0
     elasticity: 0.85
+
+
+  # Extra foods (variants / common missing staples)
+  kelp:
+    material: KELP
+    base-value: 1.35
+    elasticity: 0.30
+  dried_kelp:
+    material: DRIED_KELP
+    base-value: 2.55
+    elasticity: 0.25
+  honey_bottle:
+    material: HONEY_BOTTLE
+    base-value: 9.6
+    elasticity: 0.35
+  honeycomb:
+    material: HONEYCOMB
+    base-value: 7.2
+    elasticity: 0.35
+  chorus_fruit:
+    material: CHORUS_FRUIT
+    base-value: 6.6
+    elasticity: 0.40
+  pumpkin_seeds:
+    material: PUMPKIN_SEEDS
+    base-value: 1.65
+    elasticity: 0.35
+  melon_seeds:
+    material: MELON_SEEDS
+    base-value: 1.65
+    elasticity: 0.35
+
+  # Eggs (warm/cold chicken variants + classic)
+  egg:
+    material: EGG
+    base-value: 2.7
+    elasticity: 0.35
+  brown_egg:
+    material: BROWN_EGG
+    base-value: 2.85
+    elasticity: 0.35
+  blue_egg:
+    material: BLUE_EGG
+    base-value: 2.85
+    elasticity: 0.35
 
   # ----------------------------
   # Food: meats & animal products
   # ----------------------------
   beef:
     material: BEEF
-    base-value: 1.5
+    base-value: 4.5
     elasticity: 0.45
   cooked_beef:
     material: COOKED_BEEF
-    base-value: 2.2
+    base-value: 6.6
     elasticity: 0.35
   porkchop:
     material: PORKCHOP
-    base-value: 1.4
+    base-value: 4.2
     elasticity: 0.45
   cooked_porkchop:
     material: COOKED_PORKCHOP
-    base-value: 2.1
+    base-value: 6.3
     elasticity: 0.35
   chicken:
     material: CHICKEN
-    base-value: 1.1
+    base-value: 3.3
     elasticity: 0.45
   cooked_chicken:
     material: COOKED_CHICKEN
-    base-value: 1.8
+    base-value: 5.4
     elasticity: 0.35
   mutton:
     material: MUTTON
-    base-value: 1.2
+    base-value: 3.6
     elasticity: 0.45
   cooked_mutton:
     material: COOKED_MUTTON
-    base-value: 1.9
+    base-value: 5.7
     elasticity: 0.35
   rabbit:
     material: RABBIT
-    base-value: 1.3
+    base-value: 3.9
     elasticity: 0.50
   cooked_rabbit:
     material: COOKED_RABBIT
-    base-value: 2.0
+    base-value: 6.0
     elasticity: 0.40
   rabbit_stew:
     material: RABBIT_STEW
-    base-value: 4.0
+    base-value: 12.0
     elasticity: 0.30
-  egg:
-    material: EGG
-    base-value: 0.7
-    elasticity: 0.35
   milk_bucket:
     material: MILK_BUCKET
-    base-value: 3.2
+    base-value: 9.6
     elasticity: 0.30
   leather:
     material: LEATHER
-    base-value: 2.0
+    base-value: 6.0
     elasticity: 0.50
   rabbit_hide:
     material: RABBIT_HIDE
-    base-value: 1.4
+    base-value: 4.2
     elasticity: 0.45
   white_wool:
     material: WHITE_WOOL
-    base-value: 1.3
+    base-value: 3.9
     elasticity: 0.45
   string:
     material: STRING
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.55
   feather:
     material: FEATHER
-    base-value: 0.5
+    base-value: 1.5
     elasticity: 0.40
 
   # ----------------------------
@@ -186,27 +227,27 @@ commodities:
   # ----------------------------
   cod:
     material: COD
-    base-value: 1.0
+    base-value: 3.0
     elasticity: 0.50
   cooked_cod:
     material: COOKED_COD
-    base-value: 1.6
+    base-value: 4.8
     elasticity: 0.40
   salmon:
     material: SALMON
-    base-value: 1.3
+    base-value: 3.9
     elasticity: 0.55
   cooked_salmon:
     material: COOKED_SALMON
-    base-value: 2.0
+    base-value: 6.0
     elasticity: 0.40
   tropical_fish:
     material: TROPICAL_FISH
-    base-value: 2.4
+    base-value: 7.2
     elasticity: 0.60
   pufferfish:
     material: PUFFERFISH
-    base-value: 4.5
+    base-value: 13.5
     elasticity: 0.70
 
   # ----------------------------
@@ -214,55 +255,149 @@ commodities:
   # ----------------------------
   oak_log:
     material: OAK_LOG
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.40
   spruce_log:
     material: SPRUCE_LOG
-    base-value: 1.0
+    base-value: 3.0
     elasticity: 0.40
   birch_log:
     material: BIRCH_LOG
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.40
   jungle_log:
     material: JUNGLE_LOG
-    base-value: 1.2
+    base-value: 3.6
     elasticity: 0.45
   acacia_log:
     material: ACACIA_LOG
-    base-value: 1.1
+    base-value: 3.3
     elasticity: 0.45
   dark_oak_log:
     material: DARK_OAK_LOG
-    base-value: 1.3
+    base-value: 3.9
     elasticity: 0.45
   mangrove_log:
     material: MANGROVE_LOG
-    base-value: 1.4
+    base-value: 4.2
     elasticity: 0.50
   cherry_log:
     material: CHERRY_LOG
-    base-value: 1.5
+    base-value: 4.5
     elasticity: 0.55
   bamboo:
     material: BAMBOO
-    base-value: 0.4
+    base-value: 1.2
     elasticity: 0.35
+
+  # ----------------------------
+  # Wood: planks, saplings, nether stems
+  # ----------------------------
+  oak_planks:
+    material: OAK_PLANKS
+    base-value: 1.65
+    elasticity: 0.35
+  spruce_planks:
+    material: SPRUCE_PLANKS
+    base-value: 1.8
+    elasticity: 0.35
+  birch_planks:
+    material: BIRCH_PLANKS
+    base-value: 1.65
+    elasticity: 0.35
+  jungle_planks:
+    material: JUNGLE_PLANKS
+    base-value: 2.1
+    elasticity: 0.40
+  acacia_planks:
+    material: ACACIA_PLANKS
+    base-value: 1.95
+    elasticity: 0.40
+  dark_oak_planks:
+    material: DARK_OAK_PLANKS
+    base-value: 2.25
+    elasticity: 0.40
+  mangrove_planks:
+    material: MANGROVE_PLANKS
+    base-value: 2.4
+    elasticity: 0.45
+  cherry_planks:
+    material: CHERRY_PLANKS
+    base-value: 2.55
+    elasticity: 0.45
+  bamboo_planks:
+    material: BAMBOO_PLANKS
+    base-value: 1.95
+    elasticity: 0.40
+  crimson_planks:
+    material: CRIMSON_PLANKS
+    base-value: 2.85
+    elasticity: 0.45
+  warped_planks:
+    material: WARPED_PLANKS
+    base-value: 2.85
+    elasticity: 0.45
+
+  oak_sapling:
+    material: OAK_SAPLING
+    base-value: 1.35
+    elasticity: 0.45
+  spruce_sapling:
+    material: SPRUCE_SAPLING
+    base-value: 1.35
+    elasticity: 0.45
+  birch_sapling:
+    material: BIRCH_SAPLING
+    base-value: 1.35
+    elasticity: 0.45
+  jungle_sapling:
+    material: JUNGLE_SAPLING
+    base-value: 1.65
+    elasticity: 0.50
+  acacia_sapling:
+    material: ACACIA_SAPLING
+    base-value: 1.65
+    elasticity: 0.50
+  dark_oak_sapling:
+    material: DARK_OAK_SAPLING
+    base-value: 1.8
+    elasticity: 0.50
+  mangrove_propagule:
+    material: MANGROVE_PROPAGULE
+    base-value: 1.95
+    elasticity: 0.55
+  cherry_sapling:
+    material: CHERRY_SAPLING
+    base-value: 2.1
+    elasticity: 0.55
+  bamboo_shoot:
+    material: BAMBOO_SHOOT
+    base-value: 1.65
+    elasticity: 0.55
+
+  crimson_stem:
+    material: CRIMSON_STEM
+    base-value: 3.3
+    elasticity: 0.50
+  warped_stem:
+    material: WARPED_STEM
+    base-value: 3.3
+    elasticity: 0.50
   stick:
     material: STICK
-    base-value: 0.15
+    base-value: 1.35
     elasticity: 0.20
   torch:
     material: TORCH
-    base-value: 0.35
+    base-value: 1.5
     elasticity: 0.25
   coal:
     material: COAL
-    base-value: 1.4
+    base-value: 4.2
     elasticity: 0.55
   charcoal:
     material: CHARCOAL
-    base-value: 1.2
+    base-value: 3.6
     elasticity: 0.50
 
   # ----------------------------
@@ -270,67 +405,67 @@ commodities:
   # ----------------------------
   cobblestone:
     material: COBBLESTONE
-    base-value: 0.18
+    base-value: 1.5
     elasticity: 0.18
   stone:
     material: STONE
-    base-value: 0.25
+    base-value: 1.65
     elasticity: 0.18
   deepslate:
     material: DEEPSLATE
-    base-value: 0.30
+    base-value: 0.9
     elasticity: 0.22
   granite:
     material: GRANITE
-    base-value: 0.28
+    base-value: 0.84
     elasticity: 0.20
   diorite:
     material: DIORITE
-    base-value: 0.28
+    base-value: 0.84
     elasticity: 0.20
   andesite:
     material: ANDESITE
-    base-value: 0.28
+    base-value: 0.84
     elasticity: 0.20
   sand:
     material: SAND
-    base-value: 0.35
+    base-value: 1.05
     elasticity: 0.35
   red_sand:
     material: RED_SAND
-    base-value: 0.40
+    base-value: 1.2
     elasticity: 0.35
   sandstone:
     material: SANDSTONE
-    base-value: 0.45
+    base-value: 1.35
     elasticity: 0.30
   red_sandstone:
     material: RED_SANDSTONE
-    base-value: 0.55
+    base-value: 1.65
     elasticity: 0.30
   gravel:
     material: GRAVEL
-    base-value: 0.30
+    base-value: 0.9
     elasticity: 0.30
   clay_ball:
     material: CLAY_BALL
-    base-value: 0.55
+    base-value: 1.65
     elasticity: 0.40
   brick:
     material: BRICK
-    base-value: 1.2
+    base-value: 3.6
     elasticity: 0.30
   glass:
     material: GLASS
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.30
   terracotta:
     material: TERRACOTTA
-    base-value: 0.75
+    base-value: 2.25
     elasticity: 0.25
   white_concrete:
     material: WHITE_CONCRETE
-    base-value: 1.2
+    base-value: 3.6
     elasticity: 0.25
 
   # ----------------------------
@@ -338,79 +473,64 @@ commodities:
   # ----------------------------
   raw_iron:
     material: RAW_IRON
-    base-value: 2.2
+    base-value: 6.6
     elasticity: 0.60
   iron_ingot:
     material: IRON_INGOT
-    base-value: 9.5
+    base-value: 28.5
     elasticity: 0.10
   raw_copper:
     material: RAW_COPPER
-    base-value: 1.2
+    base-value: 3.6
     elasticity: 0.55
   copper_ingot:
     material: COPPER_INGOT
-    base-value: 2.0
+    base-value: 6.0
     elasticity: 0.50
   raw_gold:
     material: RAW_GOLD
-    base-value: 5.0
+    base-value: 15.0
     elasticity: 0.70
   gold_ingot:
     material: GOLD_INGOT
-    base-value: 7.8
+    base-value: 23.4
     elasticity: 0.65
   redstone:
     material: REDSTONE
-    base-value: 1.1
+    base-value: 3.3
     elasticity: 0.55
   lapis_lazuli:
     material: LAPIS_LAZULI
-    base-value: 1.5
+    base-value: 4.5
     elasticity: 0.55
-  coal_ore:
-    material: COAL_ORE
-    base-value: 1.8
-    elasticity: 0.55
-  iron_ore:
-    material: IRON_ORE
-    base-value: 3.2
-    elasticity: 0.55
-  gold_ore:
-    material: GOLD_ORE
-    base-value: 7.0
-    elasticity: 0.70
-  copper_ore:
-    material: COPPER_ORE
-    base-value: 2.6
-    elasticity: 0.60
+
 
   # ----------------------------
   # Gems / rare strategic
   # ----------------------------
   diamond:
     material: DIAMOND
-    base-value: 32.0
+    base-value: 96.0
     elasticity: 0.75
   emerald:
     material: EMERALD
-    base-value: 28.0
+    base-value: 84.0
     elasticity: 0.75
   amethyst_shard:
     material: AMETHYST_SHARD
-    base-value: 2.8
+    base-value: 8.4
     elasticity: 0.55
   obsidian:
     material: OBSIDIAN
-    base-value: 3.2
+    base-value: 9.6
     elasticity: 0.60
   netherite_scrap:
     material: NETHERITE_SCRAP
-    base-value: 90.0
+    base-value: 270.0
     elasticity: 0.85
   ancient_debris:
     material: ANCIENT_DEBRIS
-    base-value: 110.0
+    base-value: 330.0
     elasticity: 0.85
 
   # ----------------------------
@@ -418,39 +538,39 @@ commodities:
   # ----------------------------
   bone:
     material: BONE
-    base-value: 0.8
+    base-value: 2.4
     elasticity: 0.55
   rotten_flesh:
     material: ROTTEN_FLESH
-    base-value: 0.25
+    base-value: 1.2
     elasticity: 0.35
   spider_eye:
     material: SPIDER_EYE
-    base-value: 1.1
+    base-value: 3.3
     elasticity: 0.65
   gunpowder:
     material: GUNPOWDER
-    base-value: 2.6
+    base-value: 7.8
     elasticity: 0.70
   slime_ball:
     material: SLIME_BALL
-    base-value: 3.4
+    base-value: 10.2
     elasticity: 0.70
   ender_pearl:
     material: ENDER_PEARL
-    base-value: 9.0
+    base-value: 27.0
     elasticity: 0.80
   blaze_rod:
     material: BLAZE_ROD
-    base-value: 8.0
+    base-value: 24.0
     elasticity: 0.80
   ghast_tear:
     material: GHAST_TEAR
-    base-value: 18.0
+    base-value: 54.0
     elasticity: 0.85
   magma_cream:
     material: MAGMA_CREAM
-    base-value: 4.5
+    base-value: 13.5
     elasticity: 0.75
 
   # ----------------------------
@@ -458,23 +578,23 @@ commodities:
   # ----------------------------
   book:
     material: BOOK
-    base-value: 3.5
+    base-value: 10.5
     elasticity: 0.30
   paper:
     material: PAPER
-    base-value: 1.6
+    base-value: 4.8
     elasticity: 0.25
   ink_sac:
     material: INK_SAC
-    base-value: 1.0
+    base-value: 3.0
     elasticity: 0.40
   experience_bottle:
     material: EXPERIENCE_BOTTLE
-    base-value: 12.0
+    base-value: 36.0
     elasticity: 0.80
   lapis_block:
     material: LAPIS_BLOCK
-    base-value: 13.0
+    base-value: 39.0
     elasticity: 0.60
 
   # ----------------------------
@@ -482,31 +602,31 @@ commodities:
   # ----------------------------
   white_dye:
     material: WHITE_DYE
-    base-value: 0.7
+    base-value: 2.1
     elasticity: 0.40
   black_dye:
     material: BLACK_DYE
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.45
   red_dye:
     material: RED_DYE
-    base-value: 0.8
+    base-value: 2.4
     elasticity: 0.45
   blue_dye:
     material: BLUE_DYE
-    base-value: 1.0
+    base-value: 3.0
     elasticity: 0.50
   green_dye:
     material: GREEN_DYE
-    base-value: 1.0
+    base-value: 3.0
     elasticity: 0.50
   yellow_dye:
     material: YELLOW_DYE
-    base-value: 0.8
+    base-value: 2.4
     elasticity: 0.40
   purple_dye:
     material: PURPLE_DYE
-    base-value: 1.4
+    base-value: 4.2
     elasticity: 0.55
 
   # ----------------------------
@@ -514,23 +634,23 @@ commodities:
   # ----------------------------
   netherrack:
     material: NETHERRACK
-    base-value: 0.15
+    base-value: 1.2
     elasticity: 0.25
   nether_brick:
     material: NETHER_BRICK
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.40
   quartz:
     material: QUARTZ
-    base-value: 1.8
+    base-value: 5.4
     elasticity: 0.55
   soul_sand:
     material: SOUL_SAND
-    base-value: 0.9
+    base-value: 2.7
     elasticity: 0.55
   glowstone_dust:
     material: GLOWSTONE_DUST
-    base-value: 1.6
+    base-value: 4.8
     elasticity: 0.60
 
   # ----------------------------
@@ -538,37 +658,184 @@ commodities:
   # ----------------------------
   arrow:
     material: ARROW
-    base-value: 0.35
+    base-value: 1.65
     elasticity: 0.35
   bow:
     material: BOW
-    base-value: 9.0
+    base-value: 27.0
     elasticity: 0.50
   crossbow:
     material: CROSSBOW
-    base-value: 14.0
+    base-value: 42.0
     elasticity: 0.55
   shield:
     material: SHIELD
-    base-value: 10.0
+    base-value: 30.0
     elasticity: 0.45
   flint:
     material: FLINT
-    base-value: 0.6
+    base-value: 1.8
     elasticity: 0.45
   flint_and_steel:
     material: FLINT_AND_STEEL
-    base-value: 6.0
+    base-value: 18.0
     elasticity: 0.35
   bucket:
     material: BUCKET
-    base-value: 10.0
+    base-value: 30.0
     elasticity: 0.15
   water_bucket:
     material: WATER_BUCKET
-    base-value: 11.0
+    base-value: 33.0
     elasticity: 0.15
   lava_bucket:
     material: LAVA_BUCKET
-    base-value: 14.0
+    base-value: 42.0
     elasticity: 0.25
+  # ----------------------------
+  # Copper Age (1.21.9+ / Paper 1.21.11)
+  # ----------------------------
+  copper_nugget:
+    material: COPPER_NUGGET
+    base-value: 1.05
+    elasticity: 0.35
+  copper_torch:
+    material: COPPER_TORCH
+    base-value: 2.7
+    elasticity: 0.35
+  copper_lantern:
+    material: COPPER_LANTERN
+    base-value: 18.0
+    elasticity: 0.25
+  copper_chain:
+    material: COPPER_CHAIN
+    base-value: 7.5
+    elasticity: 0.30
+  copper_bars:
+    material: COPPER_BARS
+    base-value: 6.0
+    elasticity: 0.30
+  copper_chest:
+    material: COPPER_CHEST
+    base-value: 66.0
+    elasticity: 0.20
+  copper_grate:
+    material: COPPER_GRATE
+    base-value: 10.5
+    elasticity: 0.30
+  copper_bulb:
+    material: COPPER_BULB
+    base-value: 24.0
+    elasticity: 0.25
+  chiseled_copper:
+    material: CHISELED_COPPER
+    base-value: 30.0
+    elasticity: 0.20
+  copper_door:
+    material: COPPER_DOOR
+    base-value: 18.0
+    elasticity: 0.25
+  copper_trapdoor:
+    material: COPPER_TRAPDOOR
+    base-value: 15.0
+    elasticity: 0.25
+
+  # Tools (copper)
+  copper_sword:
+    material: COPPER_SWORD
+    base-value: 27.0
+    elasticity: 0.25
+  copper_pickaxe:
+    material: COPPER_PICKAXE
+    base-value: 30.0
+    elasticity: 0.25
+  copper_axe:
+    material: COPPER_AXE
+    base-value: 30.0
+    elasticity: 0.25
+  copper_shovel:
+    material: COPPER_SHOVEL
+    base-value: 18.0
+    elasticity: 0.25
+  copper_hoe:
+    material: COPPER_HOE
+    base-value: 18.0
+    elasticity: 0.25
+
+  # Armor (copper)
+  copper_helmet:
+    material: COPPER_HELMET
+    base-value: 42.0
+    elasticity: 0.20
+  copper_chestplate:
+    material: COPPER_CHESTPLATE
+    base-value: 66.0
+    elasticity: 0.20
+  copper_leggings:
+    material: COPPER_LEGGINGS
+    base-value: 54.0
+    elasticity: 0.20
+  copper_boots:
+    material: COPPER_BOOTS
+    base-value: 36.0
+    elasticity: 0.20
+  copper_horse_armor:
+    material: COPPER_HORSE_ARMOR
+    base-value: 60.0
+    elasticity: 0.20
+
+  # Storage / decor (shelves)
+  oak_shelf:
+    material: OAK_SHELF
+    base-value: 12.0
+    elasticity: 0.30
+  spruce_shelf:
+    material: SPRUCE_SHELF
+    base-value: 12.0
+    elasticity: 0.30
+  birch_shelf:
+    material: BIRCH_SHELF
+    base-value: 12.0
+    elasticity: 0.30
+  jungle_shelf:
+    material: JUNGLE_SHELF
+    base-value: 12.0
+    elasticity: 0.30
+  acacia_shelf:
+    material: ACACIA_SHELF
+    base-value: 12.0
+    elasticity: 0.30
+  dark_oak_shelf:
+    material: DARK_OAK_SHELF
+    base-value: 13.5
+    elasticity: 0.30
+  mangrove_shelf:
+    material: MANGROVE_SHELF
+    base-value: 13.5
+    elasticity: 0.30
+  cherry_shelf:
+    material: CHERRY_SHELF
+    base-value: 15.0
+    elasticity: 0.30
+  bamboo_shelf:
+    material: BAMBOO_SHELF
+    base-value: 13.5
+    elasticity: 0.30
+  crimson_shelf:
+    material: CRIMSON_SHELF
+    base-value: 18.0
+    elasticity: 0.30
+  warped_shelf:
+    material: WARPED_SHELF
+    base-value: 18.0
+    elasticity: 0.30
+
+  # Copper golems (fun / rare)
+  copper_golem_spawn_egg:
+    material: COPPER_GOLEM_SPAWN_EGG
+    base-value: 750.0
+    elasticity: 0.10
+  copper_golem_statue:
+    material: COPPER_GOLEM_STATUE
+    base-value: 180.0
+    elasticity: 0.15
