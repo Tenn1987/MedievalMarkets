@@ -209,10 +209,6 @@ commodities:
     material: RABBIT_HIDE
     base-value: 4.2
     elasticity: 0.45
-  white_wool:
-    material: WHITE_WOOL
-    base-value: 3.9
-    elasticity: 0.45
   string:
     material: STRING
     base-value: 2.7
@@ -220,6 +216,89 @@ commodities:
   feather:
     material: FEATHER
     base-value: 1.5
+    elasticity: 0.40
+
+  # =========================
+  # 🧶 TEXTILES
+  # =========================
+  white_wool:
+    material: WHITE_WOOL
+    base-value: 5
+    elasticity: 0.40
+
+  black_wool:
+    material: BLACK_WOOL
+  base-value: 6
+  elasticity: 0.40
+
+  gray_wool:
+    material: GRAY_WOOL
+    base-value: 6
+    elasticity: 0.40
+
+  light_gray_wool:
+    material: LIGHT_GRAY_WOOL
+    base-value: 6
+    elasticity: 0.40
+
+  brown_wool:
+    material: BROWN_WOOL
+    base-value: 7
+    elasticity: 0.40
+
+  red_wool:
+    material: RED_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  orange_wool:
+    material: ORANGE_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  yellow_wool:
+    material: YELLOW_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  lime_wool:
+    material: LIME_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  green_wool:
+    material: GREEN_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  cyan_wool:
+    material: CYAN_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  light_blue_wool:
+    material: LIGHT_BLUE_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  blue_wool:
+    material: BLUE_WOOL
+    base-value: 7.5
+    elasticity: 0.40
+
+  purple_wool:
+    material: PURPLE_WOOL
+    base-value: 9.5
+    elasticity: 0.40
+
+  magenta_wool:
+    material: MAGENTA_WOOL
+    base-value: 9.5
+    elasticity: 0.40
+
+  pink_wool:
+    material: PINK_WOOL
+    base-value: 10.5
     elasticity: 0.40
 
   # ----------------------------

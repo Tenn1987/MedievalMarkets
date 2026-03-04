@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public final class MedievalMarketsPlugin extends JavaPlugin {
 
@@ -18,12 +19,14 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
     private MpcEconomy economy;
     private MarketService marketService;
 
+    private BukkitTask ledgerAutosaveTask;
+
     @Override
     public void onEnable() {
 
         getLogger().info("MedievalMarkets enabling...");
 
-        // ✅ CONFIG MUST LOAD FIRST
+        // CONFIG MUST LOAD FIRST
         saveDefaultConfig();
         reloadConfig();
 
@@ -62,13 +65,13 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
                     getConfig().getString("economy.default-currency", "SHEKEL")
             );
 
-            // ✅ INIT AFTER CONFIG IS LOADED
+            // INIT loads defaults + ledger.yml and builds the PriceEngine
             marketService.init();
 
             getLogger().info("MarketService loaded with "
                     + marketService.commodities().size() + " commodities.");
 
-            // ✅ REGISTER AS SERVICE
+            // Register as service
             Bukkit.getServicesManager().register(
                     MarketService.class,
                     marketService,
@@ -98,6 +101,18 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
                 getCommand("markets").setExecutor(new MarketCommand(marketService));
             }
 
+            /* =========================
+               Autosave ledger.yml
+               ========================= */
+            // every 5 minutes (async): minimizes loss on power-off
+            ledgerAutosaveTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+                try {
+                    if (marketService != null) marketService.saveLedger();
+                } catch (Throwable t) {
+                    getLogger().warning("Ledger autosave failed: " + t.getMessage());
+                }
+            }, 20L * 300, 20L * 300);
+
             getLogger().info("MedievalMarkets hooks + services ready.");
         });
 
@@ -106,7 +121,20 @@ public final class MedievalMarketsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Nothing critical to tear down yet
+        // Cancel autosave task cleanly
+        if (ledgerAutosaveTask != null) {
+            ledgerAutosaveTask.cancel();
+            ledgerAutosaveTask = null;
+        }
+
+        // Save ledger one last time
+        try {
+            if (marketService != null) {
+                marketService.saveLedger();
+            }
+        } catch (Throwable t) {
+            getLogger().warning("Final ledger save failed: " + t.getMessage());
+        }
     }
 
     public BabBurgHook babHook() { return babHook; }

@@ -189,6 +189,7 @@ public final class MarketService {
 
     public boolean buy(Player buyer, String commodityId, int qty, String currencyCode) {
         if (buyer == null) return false;
+
         if (mpc == null) {
             buyer.sendMessage(text("Economy unavailable (MPCBridge not found).", RED));
             return false;
@@ -202,10 +203,19 @@ public final class MarketService {
 
         String cur = currencyCode.toUpperCase(Locale.ROOT);
 
+        // Enforce stock before charging player
+        int available = ledger.stock(townId, commodityId); // <-- you likely already have this accessor
+        if (available <= 0) {
+            buyer.sendMessage(text("Out of stock.", RED));
+            return false;
+        }
+
+        int qtyToAttempt = Math.min(qty, available); qtyToAttempt = Math.min(qty, available);
+
         Quote q = quote(townId, commodityId, cur);
         if (!(q.buyUnit > 0.0) || Double.isNaN(q.buyUnit) || Double.isInfinite(q.buyUnit)) return false;
 
-        long costCoins = safeCeilToLong(q.buyUnit * (double) qty);
+        long costCoins = safeCeilToLong(q.buyUnit * (double) qtyToAttempt);
         if (costCoins <= 0) return false;
 
         double taxRate = clampTax(bab.salesTaxRateAt(buyer.getLocation()));
@@ -225,17 +235,27 @@ public final class MarketService {
             if (!mpc.withdraw(playerId, cur, (double) grandCoins)) return false;
             mpc.deposit(townId, cur, (double) grandCoins);
 
-            ItemStack stack = new ItemStack(c.material(), qty);
+            ItemStack stack = new ItemStack(c.material(), qtyToAttempt);
             Map<Integer, ItemStack> leftovers = buyer.getInventory().addItem(stack);
+
             int notGiven = leftovers.values().stream().mapToInt(ItemStack::getAmount).sum();
-            int given = qty - notGiven;
+            int given = qtyToAttempt - notGiven;
 
             if (given > 0) {
                 ledger.recordDemand(townId, commodityId, given);
-                // OPTIONAL: stock gating could remove here if you enforce "must have stock"
+                ledger.removeStock(townId, commodityId, given); // <-- this reduces reserves
             }
 
-            return given > 0;
+
+            // If nothing fit in inventory, refund the player
+            if (given <= 0) {
+                mpc.withdraw(townId, cur, (double) grandCoins);
+                mpc.deposit(playerId, cur, (double) grandCoins);
+                buyer.sendMessage(text("Inventory full.", RED));
+                return false;
+            }
+
+            return true;
 
         } catch (RuntimeException ex) {
             plugin.getLogger().warning("[MM][BUY] Exception: " + ex.getMessage());
