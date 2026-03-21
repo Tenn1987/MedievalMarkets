@@ -227,7 +227,7 @@ commodities:
     elasticity: 0.40
 
   black_wool:
-    material: BLACK_WOOL
+  material: BLACK_WOOL
   base-value: 6
   elasticity: 0.40
 
@@ -368,6 +368,15 @@ commodities:
     material: BAMBOO
     base-value: 1.2
     elasticity: 0.35
+  pale_oak_log:
+    material: PALE_OAK_LOG
+    base-value: 17
+    elasticity: 0.45
+  pale_oak_wood:
+    material: PALE_OAK_WOOD
+    base-value: 17
+    elasticity: 0.45
+
 
   # ----------------------------
   # Wood: planks, saplings, nether stems
@@ -416,7 +425,15 @@ commodities:
     material: WARPED_PLANKS
     base-value: 2.85
     elasticity: 0.45
+  pale_oak_planks:
+    material: PALE_OAK_PLANKS
+    base-value: 2.85
+    elasticity: 0.45
 
+  pale_oak_sapling:
+    material: PALE_OAK_SAPLING
+    base-value: 20
+    elasticity: 0.75
   oak_sapling:
     material: OAK_SAPLING
     base-value: 1.35
@@ -449,10 +466,6 @@ commodities:
     material: CHERRY_SAPLING
     base-value: 2.1
     elasticity: 0.55
-  bamboo_shoot:
-    material: BAMBOO_SHOOT
-    base-value: 1.65
-    elasticity: 0.55
 
   crimson_stem:
     material: CRIMSON_STEM
@@ -478,6 +491,45 @@ commodities:
     material: CHARCOAL
     base-value: 3.6
     elasticity: 0.50
+
+  # =========================
+  # 🧭 NAVIGATION & MAPS
+  # =========================
+
+  compass:
+    material: COMPASS
+    base-value: 26
+    elasticity: 0.18
+
+  recovery_compass:
+    material: RECOVERY_COMPASS
+    base-value: 160
+    elasticity: 0.18
+
+  clock:
+    material: CLOCK
+    base-value: 38.5
+    elasticity: 0.18
+
+  map:
+    material: MAP
+    base-value: 15
+    elasticity: 0.18
+
+  filled_map:
+    material: FILLED_MAP
+    base-value: 100
+    elasticity: 0.18
+
+  cartography_table:
+    material: CARTOGRAPHY_TABLE
+    base-value: 65
+    elasticity: 0.18
+
+  spyglass:
+    material: SPYGLASS
+    base-value: 51
+    elasticity: 0.18
 
   # ----------------------------
   # Stone & building
@@ -918,3 +970,161 @@ commodities:
     material: COPPER_GOLEM_STATUE
     base-value: 180.0
     elasticity: 0.15
+  # ----------------------------
+  # Herbal / fungi / brewing
+  # ----------------------------
+  brown_mushroom:
+    material: BROWN_MUSHROOM
+    base-value: 2.4
+    elasticity: 0.40
+  red_mushroom:
+    material: RED_MUSHROOM
+    base-value: 2.7
+    elasticity: 0.45
+  mushroom_stew:
+    material: MUSHROOM_STEW
+    base-value: 8.4
+    elasticity: 0.30
+  fermented_spider_eye:
+    material: FERMENTED_SPIDER_EYE
+    base-value: 6.0
+    elasticity: 0.55
+  nether_wart:
+    material: NETHER_WART
+    base-value: 5.4
+    elasticity: 0.60
+  glass_bottle:
+    material: GLASS_BOTTLE
+    base-value: 2.1
+    elasticity: 0.25
+
+  # ----------------------------
+  # Flowers / botanicals
+  # ----------------------------
+  dandelion:
+    material: DANDELION
+    base-value: 1.5
+    elasticity: 0.35
+  poppy:
+    material: POPPY
+    base-value: 1.8
+    elasticity: 0.35
+  blue_orchid:
+    material: BLUE_ORCHID
+    base-value: 3.6
+    elasticity: 0.50
+  allium:
+    material: ALLIUM
+    base-value: 3.3
+    elasticity: 0.45
+  azure_bluet:
+    material: AZURE_BLUET
+    base-value: 2.4
+    elasticity: 0.40
+  oxeye_daisy:
+    material: OXEYE_DAISY
+    base-value: 2.4
+    elasticity: 0.40
+  cornflower:
+    material: CORNFLOWER
+    base-value: 3.0
+    elasticity: 0.45
+  lily_of_the_valley:
+    material: LILY_OF_THE_VALLEY
+    base-value: 4.8
+    elasticity: 0.55
+  sunflower:
+    material: SUNFLOWER
+    base-value: 3.9
+    elasticity: 0.45
+
+  # ----------------------------
+  # Livestock / rural secondary goods
+  # ----------------------------
+  wool:
+    material: WOOL
+    base-value: 5.4
+    elasticity: 0.40
+  shears:
+    material: SHEARS
+    base-value: 24.0
+    elasticity: 0.20
+  saddle:
+    material: SADDLE
+    base-value: 54.0
+    elasticity: 0.45
+  lead:
+    material: LEAD
+    base-value: 12.0
+    elasticity: 0.35
+
+  # ----------------------------
+  # Cold-biome goods
+  # ----------------------------
+  snowball:
+    material: SNOWBALL
+    base-value: 0.9
+    elasticity: 0.20
+  snow_block:
+    material: SNOW_BLOCK
+    base-value: 1.5
+    elasticity: 0.20
+  ice:
+    material: ICE
+    base-value: 2.7
+    elasticity: 0.30
+  packed_ice:
+    material: PACKED_ICE
+    base-value: 4.5
+    elasticity: 0.35
+  blue_ice:
+    material: BLUE_ICE
+    base-value: 9.6
+    elasticity: 0.45
+
+  # ----------------------------
+  # Ocean / salvage / reef
+  # ----------------------------
+  nautilus_shell:
+    material: NAUTILUS_SHELL
+    base-value: 30.0
+    elasticity: 0.75
+  heart_of_the_sea:
+    material: HEART_OF_THE_SEA
+    base-value: 180.0
+    elasticity: 0.85
+  prismarine_shard:
+    material: PRISMARINE_SHARD
+    base-value: 6.6
+    elasticity: 0.60
+  prismarine_crystals:
+    material: PRISMARINE_CRYSTALS
+    base-value: 8.4
+    elasticity: 0.65
+  # ----------------------------
+  # Stone diversity / mason goods
+  # ----------------------------
+  cobbled_deepslate:
+    material: COBBLED_DEEPSLATE
+    base-value: 1.2
+    elasticity: 0.22
+  tuff:
+    material: TUFF
+    base-value: 1.05
+    elasticity: 0.22
+  calcite:
+    material: CALCITE
+    base-value: 1.35
+    elasticity: 0.28
+  dripstone_block:
+    material: DRIPSTONE_BLOCK
+    base-value: 1.65
+    elasticity: 0.30
+  pointed_dripstone:
+    material: POINTED_DRIPSTONE
+    base-value: 1.5
+    elasticity: 0.35
+  moss_block:
+    material: MOSS_BLOCK
+    base-value: 2.1
+    elasticity: 0.35
