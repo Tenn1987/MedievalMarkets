@@ -157,6 +157,24 @@ public final class MarketService {
         return ledger.stock(townId, commodityId);
     }
 
+    public double referenceValue(Material mat) {
+        if (mat == null) return 0.0;
+        if (prices == null) return 0.0;
+
+        double best = 0.0;
+
+        for (Commodity c : commodities.values()) {
+            if (c.material() != mat) continue;
+
+            double v = prices.globalCommodityValue(c.id());
+            if (Double.isFinite(v) && v > best) {
+                best = v;
+            }
+        }
+
+        return best;
+    }
+
     /* =========================
        Quotes / Pricing
        ========================= */
