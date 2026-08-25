@@ -1,4 +1,4 @@
-# MedievalMarkets config (v0.0.x)
+# MedievalMarkets config (v0.2.7)
 
 # If MPCBridge is present+healthy, MM will hook it automatically.
 # If not, MM still enables in standalone mode.
@@ -7,6 +7,17 @@ standalone:
 
 # ==========================================
 # MedievalMarkets - Full Monty Commodities
+#
+# v0.2.7 catalog policy:
+# - Existing hand-tuned commodities and prices are preserved.
+# - Missing Paper 26.2 inventory items are auto-added only when they are
+#   legitimate Survival commodities: mine/harvest/gather/drop/loot/fish/
+#   trade/smelt/cook/craft.
+# - Spawn eggs, operator/debug/structure items, creative-only materials and
+#   technical-only materials are excluded.
+# - Newly discovered legitimate items start at base-value 10.0 and
+#   elasticity 0.25 as placeholders for later balancing.
+# - The configured currency backing item is excluded from ordinary trading.
 # Unit of account: SHEKEL
 # base-value: equilibrium price when scarcityIndex ≈ 1.0
 # elasticity: how strongly scarcity moves price (0.15–0.35 stable, 0.5+ volatile)
@@ -227,9 +238,9 @@ commodities:
     elasticity: 0.40
 
   black_wool:
-  material: BLACK_WOOL
-  base-value: 6
-  elasticity: 0.40
+    material: BLACK_WOOL
+    base-value: 6
+    elasticity: 0.40
 
   gray_wool:
     material: GRAY_WOOL
@@ -514,11 +525,6 @@ commodities:
   map:
     material: MAP
     base-value: 15
-    elasticity: 0.18
-
-  filled_map:
-    material: FILLED_MAP
-    base-value: 100
     elasticity: 0.18
 
   cartography_table:
@@ -962,14 +968,6 @@ commodities:
     elasticity: 0.30
 
   # Copper golems (fun / rare)
-  copper_golem_spawn_egg:
-    material: COPPER_GOLEM_SPAWN_EGG
-    base-value: 750.0
-    elasticity: 0.10
-  copper_golem_statue:
-    material: COPPER_GOLEM_STATUE
-    base-value: 180.0
-    elasticity: 0.15
   # ----------------------------
   # Herbal / fungi / brewing
   # ----------------------------
@@ -1041,10 +1039,6 @@ commodities:
   # ----------------------------
   # Livestock / rural secondary goods
   # ----------------------------
-  wool:
-    material: WOOL
-    base-value: 5.4
-    elasticity: 0.40
   shears:
     material: SHEARS
     base-value: 24.0
@@ -1128,3 +1122,154 @@ commodities:
     material: MOSS_BLOCK
     base-value: 2.1
     elasticity: 0.35
+
+  # ----------------------------
+  # Tools & manufactured implements
+  # NOTE: Current market mechanics price by Material only; durability is not considered.
+  # ----------------------------
+  wooden_sword:
+    material: WOODEN_SWORD
+    base-value: 6.0
+    elasticity: 0.25
+  wooden_pickaxe:
+    material: WOODEN_PICKAXE
+    base-value: 7.5
+    elasticity: 0.25
+  wooden_axe:
+    material: WOODEN_AXE
+    base-value: 7.5
+    elasticity: 0.25
+  wooden_shovel:
+    material: WOODEN_SHOVEL
+    base-value: 4.5
+    elasticity: 0.25
+  wooden_hoe:
+    material: WOODEN_HOE
+    base-value: 6.0
+    elasticity: 0.25
+
+  stone_sword:
+    material: STONE_SWORD
+    base-value: 9.0
+    elasticity: 0.25
+  stone_pickaxe:
+    material: STONE_PICKAXE
+    base-value: 12.0
+    elasticity: 0.25
+  stone_axe:
+    material: STONE_AXE
+    base-value: 12.0
+    elasticity: 0.25
+  stone_shovel:
+    material: STONE_SHOVEL
+    base-value: 6.0
+    elasticity: 0.25
+  stone_hoe:
+    material: STONE_HOE
+    base-value: 9.0
+    elasticity: 0.25
+
+  iron_sword:
+    material: IRON_SWORD
+    base-value: 66.0
+    elasticity: 0.20
+  iron_pickaxe:
+    material: IRON_PICKAXE
+    base-value: 94.5
+    elasticity: 0.20
+  iron_axe:
+    material: IRON_AXE
+    base-value: 94.5
+    elasticity: 0.20
+  iron_shovel:
+    material: IRON_SHOVEL
+    base-value: 37.5
+    elasticity: 0.20
+  iron_hoe:
+    material: IRON_HOE
+    base-value: 66.0
+    elasticity: 0.20
+
+  golden_sword:
+    material: GOLDEN_SWORD
+    base-value: 57.0
+    elasticity: 0.25
+  golden_pickaxe:
+    material: GOLDEN_PICKAXE
+    base-value: 80.0
+    elasticity: 0.25
+  golden_axe:
+    material: GOLDEN_AXE
+    base-value: 80.0
+    elasticity: 0.25
+  golden_shovel:
+    material: GOLDEN_SHOVEL
+    base-value: 31.5
+    elasticity: 0.25
+  golden_hoe:
+    material: GOLDEN_HOE
+    base-value: 57.0
+    elasticity: 0.25
+
+  diamond_sword:
+    material: DIAMOND_SWORD
+    base-value: 210.0
+    elasticity: 0.18
+  diamond_pickaxe:
+    material: DIAMOND_PICKAXE
+    base-value: 310.0
+    elasticity: 0.18
+  diamond_axe:
+    material: DIAMOND_AXE
+    base-value: 310.0
+    elasticity: 0.18
+  diamond_shovel:
+    material: DIAMOND_SHOVEL
+    base-value: 115.0
+    elasticity: 0.18
+  diamond_hoe:
+    material: DIAMOND_HOE
+    base-value: 210.0
+    elasticity: 0.18
+
+  netherite_ingot:
+    material: NETHERITE_INGOT
+    base-value: 1200.0
+    elasticity: 0.65
+  netherite_sword:
+    material: NETHERITE_SWORD
+    base-value: 1450.0
+    elasticity: 0.16
+  netherite_pickaxe:
+    material: NETHERITE_PICKAXE
+    base-value: 1550.0
+    elasticity: 0.16
+  netherite_axe:
+    material: NETHERITE_AXE
+    base-value: 1550.0
+    elasticity: 0.16
+  netherite_shovel:
+    material: NETHERITE_SHOVEL
+    base-value: 1325.0
+    elasticity: 0.16
+  netherite_hoe:
+    material: NETHERITE_HOE
+    base-value: 1450.0
+    elasticity: 0.16
+
+  fishing_rod:
+    material: FISHING_ROD
+    base-value: 18.0
+    elasticity: 0.30
+  brush:
+    material: BRUSH
+    base-value: 21.0
+    elasticity: 0.30
+  mace:
+    material: MACE
+    base-value: 720.0
+    elasticity: 0.70
+  trident:
+    material: TRIDENT
+    base-value: 540.0
+    elasticity: 0.75

@@ -11,9 +11,12 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static net.kyori.adventure.text.Component.text;
@@ -35,6 +38,38 @@ public final class MarketService {
 
     private static final double DEFAULT_TREASURY_TARGET = 10_000.0;
 
+    /*
+     * 0.2.7 catalog expansion:
+     * Existing configured commodities keep their prices.
+     * Missing legitimate Survival items are added with neutral placeholders
+     * for later balancing.
+     */
+    private static final double AUTO_BASE_VALUE = 10.0;
+    private static final double AUTO_ELASTICITY = 0.25;
+
+    /*
+     * Items that have an item form but are not legitimately obtainable as
+     * inventory items in ordinary Survival play.
+     *
+     * Pattern-based exclusions (spawn eggs, command blocks, etc.) are handled
+     * separately in isSurvivalCommodity().
+     */
+    private static final Set<Material> SURVIVAL_ITEM_DENYLIST = EnumSet.of(
+            Material.BARRIER,
+            Material.BEDROCK,
+            Material.BUDDING_AMETHYST,
+            Material.DEBUG_STICK,
+            Material.END_PORTAL_FRAME,
+            Material.JIGSAW,
+            Material.KNOWLEDGE_BOOK,
+            Material.LIGHT,
+            Material.PETRIFIED_OAK_SLAB,
+            Material.REINFORCED_DEEPSLATE,
+            Material.SPAWNER,
+            Material.STRUCTURE_BLOCK,
+            Material.STRUCTURE_VOID
+    );
+
     public MarketService(Plugin plugin, MpcEconomy mpc) {
         this.plugin = plugin;
         this.mpc = mpc;
@@ -44,9 +79,123 @@ public final class MarketService {
 
     // ✅ MUST be public because your main plugin is in a different package
     public void init() {
+        ensureCompleteSurvivalCatalog();
         loadDefaults();
         loadLedger();
         this.prices = new PriceEngine(ledger, commodities);
+    }
+
+    /**
+     * Ensures config.yml contains every actual inventory item exposed by the
+     * running Paper server that is intended to be obtainable through ordinary
+     * Survival gameplay: mining, harvesting, gathering, mob drops, loot,
+     * fishing, villager/barter-style acquisition, smelting/cooking, or crafting.
+     *
+     * Existing hand-tuned entries are never overwritten.
+     *
+     * The configured currency backing item is deliberately excluded from
+     * commodity trading so money does not also become a normal market good.
+     */
+    private void ensureCompleteSurvivalCatalog() {
+        FileConfiguration cfg = plugin.getConfig();
+
+        ConfigurationSection sec = cfg.getConfigurationSection("commodities");
+        if (sec == null) {
+            sec = cfg.createSection("commodities");
+        }
+
+        Set<Material> alreadyConfigured = new HashSet<>();
+
+        for (String key : sec.getKeys(false)) {
+            ConfigurationSection csec = sec.getConfigurationSection(key);
+            if (csec == null) continue;
+
+            Material configuredMaterial = Material.matchMaterial(
+                    csec.getString("material", "")
+            );
+
+            if (configuredMaterial != null) {
+                alreadyConfigured.add(configuredMaterial);
+            }
+        }
+
+        Material backingItem = Material.matchMaterial(
+                cfg.getString("economy.backing-item", "IRON_NUGGET")
+        );
+
+        int added = 0;
+        int excluded = 0;
+
+        for (Material material : Material.values()) {
+            if (!isSurvivalCommodity(material, backingItem)) {
+                excluded++;
+                continue;
+            }
+
+            if (alreadyConfigured.contains(material)) continue;
+
+            String id = material.name().toLowerCase(Locale.ROOT);
+            String path = "commodities." + id;
+
+            cfg.set(path + ".material", material.name());
+            cfg.set(path + ".base-value", AUTO_BASE_VALUE);
+            cfg.set(path + ".elasticity", AUTO_ELASTICITY);
+
+            alreadyConfigured.add(material);
+            added++;
+        }
+
+        if (added > 0) {
+            plugin.saveConfig();
+            plugin.getLogger().info(
+                    "[MedievalMarkets] Added " + added
+                            + " missing Survival-obtainable items to config.yml."
+            );
+        }
+
+        plugin.getLogger().info(
+                "[MedievalMarkets] Survival commodity catalog contains "
+                        + alreadyConfigured.size()
+                        + " configured item Materials."
+        );
+
+        if (backingItem != null) {
+            plugin.getLogger().info(
+                    "[MedievalMarkets] Currency backing item "
+                            + backingItem.name()
+                            + " excluded from ordinary commodity trading."
+            );
+        }
+    }
+
+    /**
+     * Filters Paper's Material catalog down to legitimate Survival commodities.
+     *
+     * Material.isItem() removes technical block states that cannot exist in an
+     * inventory. The remaining checks remove operator/creative-only items.
+     *
+     * This intentionally does NOT require an item to be craftable. Legitimate
+     * loot, mob drops, mined materials, fishing loot, rare treasure, etc. are
+     * valid market commodities.
+     */
+    private boolean isSurvivalCommodity(Material material, Material backingItem) {
+        if (material == null || !material.isItem()) return false;
+
+        String name = material.name();
+
+        // Defensive guard for legacy aliases should they ever be exposed.
+        if (name.startsWith("LEGACY_")) return false;
+
+        // Spawn eggs are creative/admin items, not commodities.
+        if (name.endsWith("_SPAWN_EGG")) return false;
+
+        // Command-block family, including the minecart variant.
+        if (name.contains("COMMAND_BLOCK")) return false;
+
+        // Money/backing stays out of the normal commodity catalog.
+        if (backingItem != null && material == backingItem) return false;
+
+        return !SURVIVAL_ITEM_DENYLIST.contains(material);
     }
 
     public void loadDefaults() {
