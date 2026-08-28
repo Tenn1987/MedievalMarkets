@@ -306,6 +306,62 @@ public final class MarketService {
         return ledger.stock(townId, commodityId);
     }
 
+
+    /**
+     * Returns the world/global reference value of a commodity.
+     *
+     * Intended for external reporting systems such as EconomicReporter.
+     * This is the aggregate world-market value, not a local town quote.
+     */
+    public double globalCommodityValue(String commodityId) {
+        if (commodityId == null || commodityId.isBlank() || prices == null) {
+            return Double.NaN;
+        }
+
+        String id = commodityId.toLowerCase(Locale.ROOT);
+
+        if (!commodities.containsKey(id)) {
+            return Double.NaN;
+        }
+
+        double value = prices.globalCommodityValue(id);
+
+        if (!Double.isFinite(value) || value <= 0.0) {
+            return Double.NaN;
+        }
+
+        return value;
+    }
+
+    /**
+     * Returns the raw local commodity value for a specific town.
+     *
+     * This intentionally excludes spread, taxation, and currency conversion.
+     * It exposes the underlying town market value for external reporting.
+     */
+    public double townCommodityValue(UUID townId, String commodityId) {
+        if (townId == null
+                || commodityId == null
+                || commodityId.isBlank()
+                || prices == null) {
+            return Double.NaN;
+        }
+
+        String id = commodityId.toLowerCase(Locale.ROOT);
+
+        if (!commodities.containsKey(id)) {
+            return Double.NaN;
+        }
+
+        double value = prices.commodityValue(townId, id);
+
+        if (!Double.isFinite(value) || value <= 0.0) {
+            return Double.NaN;
+        }
+
+        return value;
+    }
+
     /* =========================
        Quotes / Pricing
        ========================= */
